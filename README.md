@@ -9,12 +9,14 @@ vNote is still in development, more feature coming soon...
  
 ## how to install
 make sure you have java installed on your OS first.
-then,
-you can download the .jar file in the jar file folder and run it directly.
-or,
-you can build a .jar file using the source code + dependency.
+
+then you can choose the following two method.
+
+you can 1:  download the .jar file in the jar file folder and run it directly.
+
+you can 2:  build a .jar file using the source code + dependency.
 ## how to use
- 
+ ```
 Navigation:
 Using keyboard, use key w,a,s,d for shift viewport up, left, down, right.
 Alternatively, you can use mouse wheel for scrolling.
@@ -28,10 +30,10 @@ Sticky note is the standard not
 You can:
 Single left click to highlight.
 double left click to edit content.
-( after highlight ) press q to apply current note style.
-( after highlight ) press z to erase containing link.
-( after highlight ) press x to link local director.
-( after highlight ) press c to link local file.
-( after highlight ) press v to link a web address. ( the address should in your OS clipboard first. )
- 
+    ( after highlight ) press q to apply current note style.
+    ( after highlight ) press z to erase containing link.
+    ( after highlight ) press x to link local director.
+    ( after highlight ) press c to link local file.
+    ( after highlight ) press v to link a web address. ( the address should in your OS clipboard first. )
+ ```
 ## dependency
