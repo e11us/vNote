@@ -71,6 +71,6 @@ vNote uses the following libraries, special thanks to all original developers:
  
 ## about me.
 My resume at:
-[rs](shenchenwang.com)
+[resume](https://www.google.com)
  
  
