@@ -7,13 +7,13 @@ vNote is still in development, more feature coming soon...
 ![Alt text](/screenshot/Demo1.PNG?raw=true "Demo_1")
  
 ## features
-Keep track of everything using the vNote sticky note system.
-Infiniti board size, capability to store vast amount of information.
-Config note style with style pin, easy managing set of note appearance.
-Easy and intuitive GUI design. Drag select, edit, copy, cut with ease.
-Automatic backup system, systematically backup all the board when exit.
-Use vNote like a desktop system, with directory and file shortcut.
-Store website links; keep all your bookmark safe and backed up. 
+- Keep track of everything using the vNote sticky note system.
+- Infiniti board size, capability to store vast amount of information.
+- Config note style with style pin, easy managing set of note appearance.
+- Easy and intuitive GUI design. Drag select, edit, copy, cut with ease.
+- Automatic backup system, systematically backup all the board when exit.
+- Use vNote like a desktop system, with directory and file shortcut.
+- Store website links; keep all your bookmark safe and backed up. 
  
 ## how to install
 make sure you have java installed on your OS first.
@@ -60,5 +60,16 @@ vNote uses the following libraries, special thanks to all original developers:
 - hyperic sigar
 - jsoup
  
+## license
+ 
+  Apache License
+ 
+ 
+                        Version 2.0, January 2004
+ 
+                       http://www.apache.org/licenses/
+ 
+## about me.
+My resume at shenchenwang.com
  
  
