@@ -498,13 +498,14 @@ public class DeskTopNote {
 	private void RightClick( MouseEvent e ) {
 		removeFocusOfMe();
 		//createBoardRightMenu( e.getSceneX() + camShift.getX(), e.getSceneY() + camShift.getY() );
-		createBoardRightMenu( e.getSceneX(), e.getSceneY(), camShift.getX(), camShift.getY() );
+		createBoardRightMenu( e.getScreenX(), e.getScreenY(), e.getSceneX(), e.getSceneY(),
+				camShift.getX(), camShift.getY() );
 	}
 
 	/*-----------------------------------------------------------------------------------------
 	 * create a right click menu.
 	 */
-	private void createBoardRightMenu( double x, double y, double xx, double yy ) {
+	private void createBoardRightMenu( double xs, double ys, double x, double y, double xx, double yy ) {
 		removeRightMenu();
 		ContextMenu rightMenu= new ContextMenu();
 		for( String tmp : _PinNoteFactory.NoteTypes ){
@@ -534,7 +535,7 @@ public class DeskTopNote {
 			rightMenu.getItems().add( confi );
 		}
 		//
-		rightMenu.show( root, x, y );
+		rightMenu.show( root, xs, ys );
 	}
 
 	private void createTopConfigMenu() {
