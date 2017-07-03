@@ -70,6 +70,7 @@ vNote uses the following libraries, special thanks to all original developers:
                        http://www.apache.org/licenses/
  
 ## about me.
-My resume at shenchenwang.com
+My resume at:
+[rs](shenchenwang.com)
  
  
