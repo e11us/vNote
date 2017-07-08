@@ -10,6 +10,7 @@ import javafx.scene.Node;
 import machine.Helper;
 import machine.p;
 import pin.Pin;
+import pin.PinCopyable;
 
 
 
@@ -132,19 +133,15 @@ public class _PinNoteFactory {
 	/*-----------------------------------------------------------------------------------------
 	 * create new notes with given notes ( duplicate operation )
 	 */
-	public ArrayList <Pin> createNewNote( ArrayList <Object> pins, int x, int y ) {
-		ArrayList <Pin> ret= new ArrayList <>();
-		Pin tmp;
-		for( Object pin : pins ){
-			tmp= ( (PinNoteInterface)pin ).duplicate( doc, location2GridX( x ),
-					location2GridY( y ), board, this );
-			if( tmp != null ){
-				//
-				notesID.add( tmp.getID() );
-				notes.add( tmp );
-				elm.appendChild( tmp.getXMLdataElm() );
-				ret.add( tmp );
-			}
+	public Pin createNewNote( PinCopyable pin, int x, int y ) {
+		if( ! ( pin instanceof PinNoteInterface ) )
+			return null;
+		// get the right type to create new note. then set the data by copy.
+		Pin ret= createNewNote( ( (PinNoteInterface)pin ).getTypeName(), x, y );
+		if( ! ( (PinCopyable)ret ).setXMLDatForDup( pin.getXMLDatForDup() ) ){
+			// if its good copy.
+			( (PinCopyable)ret ).deleteAfterCut();
+			return null;
 		}
 		return ret;
 	}

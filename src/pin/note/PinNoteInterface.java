@@ -8,8 +8,9 @@ import pin.Pin;
 
 
 public interface PinNoteInterface {
-	void setStyle( Element sty );
+	public void setStyle( Element sty );
 
-	Pin duplicate( Document doc, int x, int y,
-			DeskTopNote bd, _PinNoteFactory fc );
+	public String getTypeName();
+
+	void deleteThis();
 }

@@ -24,6 +24,7 @@ import javafx.scene.text.Text;
 import machine.Helper;
 import machine.p;
 import pin.Pin;
+import pin.PinCopyable;
 import pin.PinInterface;
 import pin.boarder.PinBorder;
 import pin.boarder._PinBorderFactory;
@@ -35,26 +36,25 @@ import robo.ClipBoard;
  * 
  * -------------------------------------------------------------------------------------------
  */
-public class StickyNote extends Pin implements PinNoteInterface {
-	private static final String	name			= "StickyNote";
-	private static final String	defMsg			= "New Sticky Note.";
+public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
+	private static final String	name		= "StickyNote";
+	private static final String	defMsg		= "New Sticky Note.";
 	//
-	private StickyNote			handler			= this;
-	private DeskTopNote			board			= null;
-	private _PinNoteFactory		PNF				= null;
-	private PinBorder			bd				= null;
+	private StickyNote			handler		= this;
+	private DeskTopNote			board		= null;
+	private _PinNoteFactory		PNF			= null;
+	private PinBorder			bd			= null;
 	//
-	private Element				dat				= null;
+	private Element				dat			= null;
 	//
-	private Label				lb				= null;
-	private TextArea			ta				= null;
-	private HBox				hb				= null;
-	private Group				bdNodes			= null;
+	private Label				lb			= null;
+	private TextArea			ta			= null;
+	private HBox				hb			= null;
+	private Group				bdNodes		= null;
 	//
-	private boolean				BasefocusOn		= false;
-	private boolean				TAfocusOn		= false;
-	private boolean				dragWasOn		= false;
-	private boolean				cutNoteSignal	= false;
+	private boolean				BasefocusOn	= false;
+	private boolean				TAfocusOn	= false;
+	private boolean				dragWasOn	= false;
 	// loc tmp copy.
 	private int					gx, gy, width, height;
 
@@ -114,56 +114,6 @@ public class StickyNote extends Pin implements PinNoteInterface {
 		gx= Integer.parseInt( dat.getAttribute( "GridLocationX" ) );
 		gy= Integer.parseInt( dat.getAttribute( "GridLocationY" ) );
 		init();
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * duplicate this note.
-	 */
-	public Pin duplicate( Document doc, int x, int y,
-			DeskTopNote bd, _PinNoteFactory fc ) {
-		StickyNote ret= new StickyNote( x, y, bd, fc );
-		//
-		ret.dat= doc.createElement( name );
-		ret.dat.setAttribute( "GridLocationX", x + "" );
-		ret.dat.setAttribute( "GridLocationY", y + "" );
-		ret.dat.setAttribute( "GridSizeX", dat.getAttribute( "GridSizeX" ) );
-		ret.dat.setAttribute( "GridSizeY", dat.getAttribute( "GridSizeY" ) );
-		ret.dat.setAttribute( "NoteStyle", dat.getAttribute( "NoteStyle" ) );
-		ret.dat.setAttribute( "Note", dat.getAttribute( "Note" ) );
-		//
-		ret.dat.setAttribute( "ColorBackGround1", dat.getAttribute( "ColorBackGround1" ) );
-		ret.dat.setAttribute( "ColorBackGround2", dat.getAttribute( "ColorBackGround2" ) );
-		ret.dat.setAttribute( "ColorBoarder", dat.getAttribute( "ColorBoarder" ) );
-		ret.dat.setAttribute( "ColorTitle", dat.getAttribute( "ColorTitle" ) );
-		ret.dat.setAttribute( "ColorText", dat.getAttribute( "ColorText" ) );
-		ret.dat.setAttribute( "ColorShade", dat.getAttribute( "ColorShade" ) );
-		//
-		ret.dat.setAttribute( "ColorHighLightBackGround1", dat.getAttribute( "ColorHighLightBackGround1" ) );
-		ret.dat.setAttribute( "ColorHighLightBackGround2", dat.getAttribute( "ColorHighLightBackGround2" ) );
-		ret.dat.setAttribute( "ColorHighLightBoarder", dat.getAttribute( "ColorHighLightBoarder" ) );
-		ret.dat.setAttribute( "ColorHighLightTitle", dat.getAttribute( "ColorHighLightTitle" ) );
-		ret.dat.setAttribute( "ColorHighLightText", dat.getAttribute( "ColorHighLightText" ) );
-		ret.dat.setAttribute( "ColorHighLightShade", dat.getAttribute( "ColorHighLightShade" ) );
-		//
-		ret.dat.setAttribute( "BoarderType", dat.getAttribute( "BoarderType" ) );
-		ret.dat.setAttribute( "BoarderThick", dat.getAttribute( "BoarderThick" ) );
-		ret.dat.setAttribute( "FontSize", dat.getAttribute( "FontSize" ) );
-		ret.dat.setAttribute( "FontType", dat.getAttribute( "FontType" ) );
-		ret.dat.setAttribute( "Link", dat.getAttribute( "Link" ) );
-		ret.dat.setAttribute( "ID", fc.getNewID() );
-		//
-		ret.init();
-		ret.setNoteGraphic( bd.getGridSizeConfig() );
-		// 
-		if( cutNoteSignal ){
-			// remove if cut note. same as back space.
-			PNF.remove( handler );
-			board.remove( handler );
-			if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
-				new File( dat.getAttribute( "Link" ).replaceFirst( "board ", "" ) ).delete();
-			}
-		}
-		return ret;
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -282,11 +232,7 @@ public class StickyNote extends Pin implements PinNoteInterface {
 						return;
 					case 8 :
 						// back space.
-						PNF.remove( handler );
-						board.remove( handler );
-						if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
-							new File( dat.getAttribute( "Link" ).replaceFirst( "board ", "" ) ).delete();
-						}
+						deleteThis();
 						return;
 				}
 				switch( event.getCharacter() ){
@@ -333,10 +279,6 @@ public class StickyNote extends Pin implements PinNoteInterface {
 							dat.setAttribute( "Link", f2.getAbsolutePath().replace( '\\', '/' ) );
 						}
 						break;
-					case "C" :
-						board.copyNote( handler );
-						board.removeFocusOfMe();
-						return;
 					case "b" :
 						dat.setAttribute( "Link", "board " + board.createNewBoard() );
 						break;
@@ -350,13 +292,24 @@ public class StickyNote extends Pin implements PinNoteInterface {
 							ta.setText( msg );
 						}
 						break;
-					case "X" :
-						cutNoteSignal= true;
-						board.cutNote( handler );
-						board.removeFocusOfMe();
-						return;
 					case "z" :
 						dat.setAttribute( "Link", "null" );
+					case "C" :
+						if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
+							board.popMsg( "Note with Board Link can not be copy or cut." );
+						}else{
+							board.copyNote( handler );
+							board.removeFocusOfMe();
+						}
+						return;
+					case "X" :
+						if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
+							board.popMsg( "Note with Board Link can not be copy or cut." );
+						}else{
+							board.cutNote( handler );
+							board.removeFocusOfMe();
+						}
+						return;
 					default :
 						break;
 				}
@@ -380,6 +333,78 @@ public class StickyNote extends Pin implements PinNoteInterface {
 				dragWasOn= true;
 			}
 		} );
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * for copy and paste op.
+	 */
+	@Override
+	public String getFactyName() {
+		return _PinNoteFactory.pinTypeName;
+	}
+
+	@Override
+	public String getTypeName() {
+		return StickyNote.name;
+	}
+
+	@Override
+	public Element getXMLDatForDup() {
+		return getXMLdataElm();
+	}
+
+	@Override
+	public boolean setXMLDatForDup( Element dat ) {
+		this.dat.setAttribute( "GridSizeX", dat.getAttribute( "GridSizeX" ) );
+		this.dat.setAttribute( "GridSizeY", dat.getAttribute( "GridSizeY" ) );
+		this.dat.setAttribute( "NoteStyle", dat.getAttribute( "NoteStyle" ) );
+		this.dat.setAttribute( "Note", dat.getAttribute( "Note" ) );
+		lb.setText( dat.getAttribute( "Note" ) );
+		ta.setText( dat.getAttribute( "Note" ) );
+		//
+		if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
+			board.popMsg( "Note with Board Link can not be copy or cut, it is skipped." );
+			return false;
+		}else{
+			this.dat.setAttribute( "Link", dat.getAttribute( "Link" ) );
+		}
+		//
+		setStyle( dat );
+		return true;
+	}
+
+	public Point2D getGridloc() {
+		return new Point2D( Integer.parseInt( dat.getAttribute( "GridSizeX" ) ),
+				Integer.parseInt( dat.getAttribute( "GridSizeY" ) ) );
+	}
+
+	public void selectHL() {
+		BasefocusOn= true;
+		changeMode();
+		return;
+	}
+
+	public void selectDeHL() {
+		BasefocusOn= false;
+		changeMode();
+		return;
+	}
+
+	@Override
+	public void deleteAfterCut() {
+		deleteThis();
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * delete this node.
+	 */
+	@Override
+	public void deleteThis() {
+		PNF.remove( handler );
+		board.remove( handler );
+		if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
+			new File( dat.getAttribute( "Link" ).replaceFirst( "board ", "" ) ).delete();
+		}
 	}
 
 	/*-----------------------------------------------------------------------------------------

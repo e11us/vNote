@@ -15,6 +15,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import javafx.application.Application;
 import javafx.event.EventHandler;
+import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Group;
 import javafx.scene.Node;
@@ -38,21 +39,23 @@ import machine.p;
 import machine.Helper;
 import machine._SysConfig;
 import pin.Pin;
+import pin.PinCopyable;
 import pin.note.*;
 
 
 
 public class DeskTopApp extends Application {
 	// 
-	public final static Dimension	screenSize		= Toolkit.getDefaultToolkit().getScreenSize();
+	public final static Dimension		screenSize		= Toolkit.getDefaultToolkit().getScreenSize();
 	//
-	protected String				ClipBoardType	= null;
-	protected ArrayList <Object>	ClipBoard		= new ArrayList <>();
-	protected boolean				ClipBoardCut	= false;
+	protected ArrayList <PinCopyable>	ClipBoard		= new ArrayList <>();
+	protected ArrayList <Point2D>		ClipBoardOS		= new ArrayList <Point2D>();
+	protected boolean					ClipBoardCut	= false;
 	//
-	private ArrayList <DeskTopNote>	boardStack		= new ArrayList <>();
-	private DeskTopNote				currentBoard	= null;
-	private Stage					pstage			= null;
+	private ArrayList <DeskTopNote>		boardStack		= new ArrayList <>();
+	private ArrayList <String>			boardNameStack	= new ArrayList <>();
+	private DeskTopNote					currentBoard	= null;
+	private Stage						pstage			= null;
 
 	/*-----------------------------------------------------------------------------------------
 	 * a public function to call launch.
@@ -100,13 +103,12 @@ public class DeskTopApp extends Application {
 			}
 		} );
 		//
-		stage.widthProperty().addListener((obs, oldVal, newVal) -> {
+		stage.widthProperty().addListener( ( obs, oldVal, newVal ) -> {
 			currentBoard.setWholeShift();
-		});
-
-		stage.heightProperty().addListener((obs, oldVal, newVal) -> {
+		} );
+		stage.heightProperty().addListener( ( obs, oldVal, newVal ) -> {
 			currentBoard.setWholeShift();
-		});
+		} );
 	}
 
 	public Stage getPrimStage() {
@@ -123,6 +125,25 @@ public class DeskTopApp extends Application {
 		if( pstage != null )
 			return (int)pstage.getHeight();
 		return 0;
+	}
+
+	public void setTitle( String inp ) {
+		if( pstage != null ){
+			// if inp is not null, this is called by board.
+			if( inp != null ){
+				if( boardNameStack.size() == boardStack.size() )
+					boardNameStack.remove( boardNameStack.size() - 1 );
+				boardNameStack.add( inp );
+			}
+			// otherwise, just refresh the title.
+			String til= new String();
+			for( String tmp : boardNameStack ){
+				if( til.length() == 0 )
+					til= tmp;
+				else til+= "  |  " + tmp;
+			}
+			pstage.setTitle( til );
+		}
 	}
 
 	public String createNewBoard() {
@@ -173,6 +194,11 @@ public class DeskTopApp extends Application {
 			}
 			pstage.setScene( currentBoard.refreshRoot() );
 			currentBoard.setWholeShift();
+			//
+			while( boardNameStack.size() > boardStack.size() ){
+				boardNameStack.remove( boardNameStack.size() - 1 );
+			}
+			this.setTitle( null );
 		}
 	}
 

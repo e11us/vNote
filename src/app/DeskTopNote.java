@@ -21,6 +21,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Camera;
@@ -32,6 +34,7 @@ import javafx.scene.SceneAntialiasing;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
@@ -44,16 +47,21 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseDragEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import machine.Helper;
 import machine.p;
 import pin.Pin;
+import pin.PinCopyable;
 import pin.PinInterface;
 import pin.note.PinNoteInterface;
 import pin.note.StickyNote;
@@ -67,27 +75,32 @@ import pin.note._PinNoteFactory;
  */
 public class DeskTopNote {
 	//
-	private File			file				= null;
-	private Document		doc					= null;
-	private Element			elm					= null;
+	private File					file				= null;
+	private Document				doc					= null;
+	private Element					elm					= null;
 	//
-	private DeskTopApp		app					= null;
-	private Scene			scn					= null;
-	private Group			rootSys				= null;
-	private Group			root				= null;
-	private Region			focusHolder			= null;
-	private Node			rightMenu			= null;
-	private BorderPane		topMenuP			= null;
-	private Point2D			camShift			= new Point2D( 0.0, 0.0 );
-	private int				mouseLastX			= 0;
-	private int				mouseLastY			= 0;
+	private DeskTopApp				app					= null;
+	private Scene					scn					= null;
+	private Group					rootSys				= null;
+	private Group					root				= null;
+	private Region					focusHolder			= null;
+	private Node					rightMenu			= null;
+	private BorderPane				topMenuP			= null;
 	//
-	private _PinNoteFactory	PNF					= null;
+	private Point2D					camShift			= new Point2D( 0.0, 0.0 );
+	private int						mouseLastX			= 0;
+	private int						mouseLastY			= 0;
+	private boolean					cltDown				= false;
+	private Point2D					mouseDragInit		= null;
+	private Rectangle				dragRec				= null;
+	private ArrayList <PinCopyable>	copylist			= null;
+	//
+	private _PinNoteFactory			PNF					= null;
 	// 
-	private int				ShiftKeyboardSpeedX	= 1;
-	private int				ShiftKeyboardSpeedY	= 1;
-	private int				ShiftKeyboardSpeedWX= 1;
-	private int				ShiftKeyboardSpeedWY= 1;
+	private int						ShiftKeyboardSpeedX	= 1;
+	private int						ShiftKeyboardSpeedY	= 1;
+	private int						ShiftKeyboardSpeedWX= 1;
+	private int						ShiftKeyboardSpeedWY= 1;
 
 	/*-----------------------------------------------------------------------------------------
 	 * getters and setter and other public func.
@@ -158,19 +171,31 @@ public class DeskTopNote {
 		return elm.getAttribute( "Name" );
 	}
 
-	public void configBoard() {}
-
-	public void copyNote( PinNoteInterface pin ) {
-		app.ClipBoard.removeAll( app.ClipBoard );
-		app.ClipBoard.add( pin );
-		app.ClipBoardType= "PinNoteInterface";
+	public void copyNote( PinCopyable pin ) {
+		ArrayList <PinCopyable> cp= new ArrayList <PinCopyable>();
+		cp.add( pin );
+		copyNode( cp );
 	}
 
-	public void cutNote( PinNoteInterface pin ) {
-		app.ClipBoard.removeAll( app.ClipBoard );
+	public void cutNote( PinCopyable pin ) {
+		ArrayList <PinCopyable> cp= new ArrayList <PinCopyable>();
+		cp.add( pin );
+		copyNode( cp );
 		app.ClipBoardCut= true;
-		app.ClipBoard.add( pin );
-		app.ClipBoardType= "PinNoteInterface";
+	}
+
+	public void popMsg( String inp ) {
+		popUp pu= new popUp( "Attention." );
+		VBox comp= new VBox();
+		Label lb= new Label( inp );
+		lb.setWrapText( true );
+		lb.setMaxWidth( 300 );
+		lb.setMaxHeight( 100 );
+		lb.setMinWidth( 300 );
+		lb.setMinHeight( 100 );
+		comp.getChildren().add( lb );
+		Scene stageScene= new Scene( comp, 300, 100 );
+		pu.set( stageScene, true );
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -197,6 +222,9 @@ public class DeskTopNote {
 	 * reload all the Pin for the board( the node for javaFX) in the root group.
 	 */
 	protected Scene refreshRoot() {
+		//
+		setTitle();
+		//
 		// empty root all first.
 		root.getChildren().removeAll( root.getChildren() );
 		// for pinNote.
@@ -352,6 +380,8 @@ public class DeskTopNote {
 			elm.setAttribute( "DateCreate", Helper.getCurrentDate() );
 		if( elm.getAttribute( "ScrollPolicy" ).equals( "" ) )
 			elm.setAttribute( "ScrollPolicy", "full" );
+		if( elm.getAttribute( "ScrollGridSize" ).equals( "" ) )
+			elm.setAttribute( "ScrollGridSize", "1" );
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -375,6 +405,11 @@ public class DeskTopNote {
 			scn= new Scene( rootSys, getDim().getX(), getDim().getY(),
 					true, SceneAntialiasing.BALANCED );
 		}
+		//
+		scn.setOnMouseMoved( e -> {
+			mouseLastX= (int) ( e.getSceneX() + camShift.getX() );
+			mouseLastY= (int) ( e.getSceneY() + camShift.getY() );
+		} );
 		// focus holder. switch mouse the key.
 		focusHolder.setOnMouseClicked( e -> {
 			switch( e.getButton() ){
@@ -388,16 +423,72 @@ public class DeskTopNote {
 		} );
 		focusHolder.setOnScroll( e -> {
 			if( e.getDeltaY() > 0.0 ){
-				root.setTranslateY( ShiftKeyboardSpeedY + root.getTranslateY() );
-				camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedY ) );
+				root.setTranslateY( ShiftKeyboardSpeedY *
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) )
+						+ root.getTranslateY() );
+				camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedY * 
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) ) ) );
 			}else{
-				root.setTranslateY( -ShiftKeyboardSpeedY + root.getTranslateY() );
-				camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedY ) );
+				root.setTranslateY( -ShiftKeyboardSpeedY * 
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) )
+						+ root.getTranslateY() );
+				camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedY *
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) ) ) );
 			}
 		} );
-		scn.setOnMouseMoved( e -> {
-			mouseLastX= (int) ( e.getSceneX() + camShift.getX() );
-			mouseLastY= (int) ( e.getSceneY() + camShift.getY() );
+		focusHolder.setOnMouseDragged( e -> {
+			switch( e.getButton() ){
+				case PRIMARY :
+					mouseleftDrag( (int)e.getSceneX(), (int)e.getSceneY() );
+					break;
+				default :
+					break;
+			}
+		} );
+		focusHolder.setOnMouseReleased( e -> {
+			mouseleftDragEnd();
+			// upon realase drag rec, if there is rec, check and make list of node inside rec.
+			if( dragRec != null ){
+				Rectangle tmpRec= new Rectangle();
+				tmpRec.setX( dragRec.getX() + camShift.getX() );
+				tmpRec.setY( dragRec.getY() + camShift.getY() );
+				tmpRec.setWidth( dragRec.getWidth() );
+				tmpRec.setHeight( dragRec.getHeight() );
+				//
+				copylist= new ArrayList <PinCopyable>();
+				app.ClipBoardOS.remove( app.ClipBoardOS );
+				for( Node tmp : root.getChildren() ){
+					if( tmp instanceof PinCopyable &&
+							tmp.getBoundsInParent().intersects( tmpRec.getBoundsInParent() ) ){
+						copylist.add( (PinCopyable)tmp );
+						( (PinCopyable)tmp ).selectHL();
+					}
+				}
+			}
+		} );
+		focusHolder.setOnMousePressed( e -> {
+			switch( e.getButton() ){
+				case PRIMARY :
+					//
+					removeRightMenu();
+					//
+					if( mouseDragInit == null && dragRec != null ){
+						mouseleftDragRecEnd();
+					}
+					break;
+				default :
+					break;
+			}
+		} );
+		focusHolder.setOnKeyPressed( e -> {
+			if( e.isControlDown() ){
+				cltDown= true;
+			}
+		} );
+		focusHolder.setOnKeyReleased( e -> {
+			if( !e.isControlDown() ){
+				cltDown= false;
+			}
 		} );
 		focusHolder.setOnKeyTyped( new EventHandler <KeyEvent>() {
 			@Override
@@ -409,7 +500,13 @@ public class DeskTopNote {
 						app.popBoardStack();
 						return;
 					case 8 :
-						// back space.
+						// backspace.
+						mouseleftDragRecEnd();
+						if( copylist.size() > 0 ){
+							for( PinCopyable tmp : copylist ){
+								tmp.deleteAfterCut();
+							}
+						}
 						return;
 				}
 				switch( event.getCharacter() ){
@@ -421,6 +518,7 @@ public class DeskTopNote {
 							root.setTranslateY( ShiftKeyboardSpeedWY + root.getTranslateY() );
 							camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedWY ) );
 						}
+						setTitle();
 						break;
 					case "s" :
 						if( !elm.getAttribute( "ScrollPolicy" ).equals( "full" ) ){
@@ -430,6 +528,7 @@ public class DeskTopNote {
 							root.setTranslateY( -ShiftKeyboardSpeedWY + root.getTranslateY() );
 							camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedWY ) );
 						}
+						setTitle();
 						break;
 					case "a" :
 						if( !elm.getAttribute( "ScrollPolicy" ).equals( "full" ) ){
@@ -439,6 +538,7 @@ public class DeskTopNote {
 							root.setTranslateX( ShiftKeyboardSpeedWX + root.getTranslateX() );
 							camShift= camShift.add( new Point2D( (double) -ShiftKeyboardSpeedWX, 0.0 ) );
 						}
+						setTitle();
 						break;
 					case "d" :
 						if( !elm.getAttribute( "ScrollPolicy" ).equals( "full" ) ){
@@ -448,30 +548,14 @@ public class DeskTopNote {
 							root.setTranslateX( -ShiftKeyboardSpeedWX + root.getTranslateX() );
 							camShift= camShift.add( new Point2D( (double)ShiftKeyboardSpeedWX, 0.0 ) );
 						}
+						setTitle();
 						break;
 					case " " :
 						store();
 						app.zipBackUp( file );
 						break;
-					case "r" :
-						configBoard();
-						break;
-					case "V" :
-						if( app.ClipBoard.size() != 0 ){
-							switch( app.ClipBoardType ){
-								case "PinNoteInterface" :
-									root.getChildren().addAll( PNF.createNewNote(
-											app.ClipBoard, mouseLastX, mouseLastY ) );
-									break;
-							}
-							if( app.ClipBoardCut ){
-								app.ClipBoard.removeAll( app.ClipBoard );
-								app.ClipBoardCut= false;
-							}
-						}
-						break;
-					case "e":
-					case "E":
+					case "e" :
+					case "E" :
 						if( topMenuP == null ){
 							createTopConfigMenu();
 						}else{
@@ -479,9 +563,72 @@ public class DeskTopNote {
 							topMenuP= null;
 						}
 						break;
+					case "x" :
+						root.setTranslateX( 0 );
+						root.setTranslateY( 0 );
+						camShift= new Point2D( 0.0, 0.0 );
+						setTitle();
+						break;
+					case "n" :
+						setBoardNamePopUp();
+						break;
+					case "X" :
+						app.ClipBoardCut= true;
+					case "C" :
+						if( copylist.size() > 0 ){
+							copyNode( copylist );
+						}else app.ClipBoardCut= false;
+						// remove.
+						mouseleftDragRecEnd();
+						break;
+					case "V" :
+						if( app.ClipBoard.size() != 0 ){
+							Pin tcp;
+							for( PinCopyable tmp : app.ClipBoard ){
+								switch( tmp.getFactyName() ){
+									case _PinNoteFactory.pinTypeName :
+										tcp= PNF.createNewNote(
+												tmp, mouseLastX, mouseLastY );
+										if( tcp != null ){
+											root.getChildren().add( tcp );
+											if( app.ClipBoardCut ){
+												// if good copy, delete cut case.
+												tmp.deleteAfterCut();
+											}
+										}
+										break;
+									// case : ( for other factory ).
+								}
+							}
+							// clear up after each paste.
+							app.ClipBoardCut= false;
+							app.ClipBoard.removeAll( app.ClipBoard );
+						}
+						break;
+					case "r" :
+						popMsg( "Total Notes: " + root.getChildren().size() + " \n" +
+								"Board Name: " + elm.getAttribute( "Name" ) + " \n" +
+								"Creation Date: " + elm.getAttribute( "DateCreate" ) );
 				}
 			}
 		} );
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * 
+	 */
+	private void copyNode( ArrayList <PinCopyable> nodes ) {
+		app.ClipBoard.removeAll( app.ClipBoard );
+		app.ClipBoard.addAll( nodes );
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * 
+	 */
+	private void setTitle() {
+		app.setTitle( elm.getAttribute( "Name" ) + " [" +
+				(int) ( camShift.getX() / ShiftKeyboardSpeedX ) + " , " +
+				(int) ( camShift.getY() / ShiftKeyboardSpeedY ) + "]" );
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -489,7 +636,6 @@ public class DeskTopNote {
 	 */
 	private void LeftClick( MouseEvent e ) {
 		removeFocusOfMe();
-		removeRightMenu();
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -497,6 +643,8 @@ public class DeskTopNote {
 	 */
 	private void RightClick( MouseEvent e ) {
 		removeFocusOfMe();
+		mouseleftDragEnd();
+		mouseleftDragRecEnd();
 		//createBoardRightMenu( e.getSceneX() + camShift.getX(), e.getSceneY() + camShift.getY() );
 		createBoardRightMenu( e.getScreenX(), e.getScreenY(), e.getSceneX(), e.getSceneY(),
 				camShift.getX(), camShift.getY() );
@@ -520,24 +668,13 @@ public class DeskTopNote {
 			} );
 			rightMenu.getItems().add( tmi );
 		}
-		if( topMenuP == null ){
-			MenuItem confi= new MenuItem( "Show Board Config" );
-			confi.setOnAction( e -> {
-				createTopConfigMenu();
-			} );
-			rightMenu.getItems().add( confi );
-		}else{
-			MenuItem confi= new MenuItem( "Close Board Config" );
-			confi.setOnAction( e -> {
-				rootSys.getChildren().remove( topMenuP );
-				topMenuP= null;
-			} );
-			rightMenu.getItems().add( confi );
-		}
 		//
 		rightMenu.show( root, xs, ys );
 	}
 
+	/*-----------------------------------------------------------------------------------------
+	 * top config Menu
+	 */
 	private void createTopConfigMenu() {
 		if( topMenuP == null ){
 			MenuBar topMenu= new MenuBar();
@@ -613,7 +750,7 @@ public class DeskTopNote {
 			Menu ppt= new Menu( "Property" );
 			topMenu.getMenus().add( ppt );
 			ToggleGroup pptSP= new ToggleGroup();
-			RadioMenuItem partSP= new RadioMenuItem( "partial scroll" );
+			RadioMenuItem partSP= new RadioMenuItem( "grid scroll" );
 			partSP.setToggleGroup( pptSP );
 			RadioMenuItem wholSP= new RadioMenuItem( "window scroll" );
 			wholSP.setToggleGroup( pptSP );
@@ -628,45 +765,119 @@ public class DeskTopNote {
 			partSP.setOnAction( e -> {
 				elm.setAttribute( "ScrollPolicy", "part" );
 			} );
-			//
 			ppt.getItems().add( new SeparatorMenuItem() );
 			//
-			/*
-			
-			// File menu - new, save, exit
-			Menu fileMenu = new Menu("System");
-			
-			MenuItem saveMenuItem = new MenuItem("Save Board Now");
-			MenuItem exitMenuItem = new MenuItem("Exit System");
-			
-			fileMenu.getItems().addAll(newMenuItem, saveMenuItem,
-			    new SeparatorMenuItem(), exitMenuItem);
-			
-			Menu webMenu = new Menu("Web");
-			CheckMenuItem htmlMenuItem = new CheckMenuItem("HTML");
-			htmlMenuItem.setSelected(true);
-			webMenu.getItems().add(htmlMenuItem);
-			
-			CheckMenuItem cssMenuItem = new CheckMenuItem("CSS");
-			cssMenuItem.setSelected(true);
-			webMenu.getItems().add(cssMenuItem);
-			
-			
-			
-			Menu tutorialManeu = new Menu("Tutorial");
-			tutorialManeu.getItems().addAll(
-			    new CheckMenuItem("Java"),
-			    new CheckMenuItem("JavaFX"),
-			    new CheckMenuItem("Swing"));
-			
-			sqlMenu.getItems().add(tutorialManeu);
-			
-			
-			
-			menuBar.getMenus().addAll(exitConfig,fileMenu, webMenu, sqlMenu);
-			
-			*/
+			MenuItem name= new MenuItem( "change name" );
+			name.setOnAction( e -> {
+				setBoardNamePopUp();
+			} );
+			MenuItem scrolGD= new MenuItem( "scroll grid size" );
+			scrolGD.setOnAction( e -> {
+				setScrollGridSizePopUp();
+			} );
+			ppt.getItems().add( name );
+			ppt.getItems().add( scrolGD );
+			ppt.getItems().add( new SeparatorMenuItem() );
+			//	CheckMenuItem htmlMenuItem = new CheckMenuItem("HTML");
 		}
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * left mouse drag a rec and relase.
+	 */
+	public void mouseleftDrag( int x, int y ) {
+		//p.p( x + " " + y );
+		if( mouseDragInit == null ){
+			mouseDragInit= new Point2D( x, y );
+			if( dragRec != null ){
+				mouseleftDragRecEnd();
+			}
+			dragRec= new Rectangle();
+			dragRec.setX( x );
+			dragRec.setY( y );
+			dragRec.setFill( new Color( 1.0, 1.0, 1.0, 0.1 ) );
+			rootSys.getChildren().add( dragRec );
+		}else{
+			if( x >= mouseDragInit.getX() )
+				dragRec.setWidth( x - mouseDragInit.getX() );
+			else{
+				dragRec.setWidth( mouseDragInit.getX() - x );
+				dragRec.setX( x );
+			}
+			if( y >= mouseDragInit.getY() )
+				dragRec.setHeight( y - mouseDragInit.getY() );
+			else{
+				dragRec.setHeight( mouseDragInit.getY() - y );
+				dragRec.setY( y );
+			}
+		}
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * end mouse drag.
+	 */
+	private void mouseleftDragEnd() {
+		mouseDragInit= null;
+	}
+
+	private void mouseleftDragRecEnd() {
+		// remove rec.
+		rootSys.getChildren().remove( dragRec );
+		// de HL copylist content if there is any.
+		if( copylist != null && copylist.size() > 0 ){
+			for( PinCopyable tmp : copylist ){
+				tmp.selectDeHL();
+			}
+		}
+		dragRec= null;
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * create a pop up menu for inter the new board name.
+	 */
+	private void setBoardNamePopUp() {
+		popUp pu= new popUp( "Set Board Name." );
+		VBox comp= new VBox();
+		Label sig= new Label( "Press Enter key to set and exit." );
+		TextField nameField= new TextField( elm.getAttribute( "Name" ) );
+		nameField.setOnKeyPressed( new EventHandler <KeyEvent>() {
+			@Override
+			public void handle( KeyEvent event ) {
+				if( event.getCode() == KeyCode.ENTER ){
+					pu.close();
+					elm.setAttribute( "Name", nameField.getText() );
+					setTitle();
+				}
+			}
+		} );
+		comp.getChildren().addAll( sig, nameField );
+		Scene stageScene= new Scene( comp, 300, 100 );
+		pu.set( stageScene, true );
+	}
+	
+	/*-----------------------------------------------------------------------------------------
+	 * create a pop up menu for inter the new board name.
+	 */
+	private void setScrollGridSizePopUp() {
+		popUp pu= new popUp( "Set Scroll Grid Size." );
+		VBox comp= new VBox();
+		Label sig= new Label( "Press Enter key to set and exit." );
+		TextField nameField= new TextField( elm.getAttribute( "ScrollGridSize" ) );
+		nameField.setOnKeyPressed( new EventHandler <KeyEvent>() {
+			@Override
+			public void handle( KeyEvent event ) {
+				if( event.getCode() == KeyCode.ENTER ){
+					pu.close();
+					try {
+						Integer.parseInt(  nameField.getText()  );
+						elm.setAttribute( "ScrollGridSize", nameField.getText() );
+					}catch( Exception ee ) {}
+				}
+			}
+		} );
+		comp.getChildren().addAll( sig, nameField );
+		Scene stageScene= new Scene( comp, 300, 100 );
+		pu.set( stageScene, true );
 	}
 
 	/*-----------------------------------------------------------------------------------------

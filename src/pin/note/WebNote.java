@@ -10,6 +10,7 @@ import app.DeskTopNote;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
+import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.control.Label;
@@ -19,6 +20,7 @@ import javafx.scene.layout.HBox;
 import machine.Helper;
 import machine.p;
 import pin.Pin;
+import pin.PinCopyable;
 import pin.boarder.PinBorder;
 import pin.boarder._PinBorderFactory;
 import robo.ClipBoard;
@@ -29,7 +31,7 @@ import robo.ClipBoard;
  * 
  * -------------------------------------------------------------------------------------------
  */
-public class WebNote extends Pin implements PinNoteInterface {
+public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 	private static final String	name		= "WebNote";
 	private static final String	defMsg		= "New Web Note.";
 	//
@@ -120,6 +122,74 @@ public class WebNote extends Pin implements PinNoteInterface {
 
 	public String getID() {
 		return dat.getAttribute( "ID" );
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 *  for dup op.
+	 */
+	@Override
+	public String getTypeName() {
+		return WebNote.name;
+	}
+
+	@Override
+	public String getFactyName() {
+		return _PinNoteFactory.pinTypeName;
+	}
+
+	@Override
+	public Element getXMLDatForDup() {
+		return getXMLdataElm();
+	}
+
+	@Override
+	public boolean setXMLDatForDup( Element dat ) {
+		this.dat.setAttribute( "GridSizeX", dat.getAttribute( "GridSizeX" ) );
+		this.dat.setAttribute( "GridSizeY", dat.getAttribute( "GridSizeY" ) );
+		this.dat.setAttribute( "NoteStyle", dat.getAttribute( "NoteStyle" ) );
+		this.dat.setAttribute( "Note", dat.getAttribute( "Note" ) );
+		this.dat.setAttribute( "Link", dat.getAttribute( "Link" ) );
+		//
+		lb.setText( dat.getAttribute( "Note" ) );
+		ta.setText( dat.getAttribute( "Note" ) );
+		//
+		totLink= link2link( dat.getAttribute( "Link" ) ).size();
+		setStyle( dat );
+		return true;
+	}
+
+	public void selectHL() {
+		BasefocusOn= true;
+		changeMode();
+		return;
+	}
+
+	public void selectDeHL() {
+		BasefocusOn= false;
+		changeMode();
+		return;
+	}
+
+	public Point2D getGridloc() {
+		return new Point2D( Integer.parseInt( dat.getAttribute( "GridSizeX" ) ),
+				Integer.parseInt( dat.getAttribute( "GridSizeY" ) ) );
+	}
+
+	@Override
+	public void deleteAfterCut() {
+		deleteThis();
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * 
+	 */
+	@Override
+	public void deleteThis() {
+		PNF.remove( handler );
+		board.remove( handler );
+		if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
+			new File( dat.getAttribute( "Link" ).replaceFirst( "board ", "" ) ).delete();
+		}
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -224,11 +294,7 @@ public class WebNote extends Pin implements PinNoteInterface {
 						return;
 					case 8 :
 						// back space.
-						PNF.remove( handler );
-						board.remove( handler );
-						if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
-							new File( dat.getAttribute( "Link" ).replaceFirst( "board ", "" ) ).delete();
-						}
+						deleteThis();
 						return;
 				}
 				switch( event.getCharacter() ){
@@ -286,6 +352,14 @@ public class WebNote extends Pin implements PinNoteInterface {
 						dat.setAttribute( "Link", "null" );
 					default :
 						break;
+					case "C" :
+						board.copyNote( handler );
+						board.removeFocusOfMe();
+						return;
+					case "X" :
+						board.cutNote( handler );
+						board.removeFocusOfMe();
+						return;
 				}
 				board.storeXMLfil();
 				BasefocusOn= true;
@@ -501,11 +575,5 @@ public class WebNote extends Pin implements PinNoteInterface {
 			}
 		};
 		tt.start();
-	}
-
-	@Override
-	public Pin duplicate( Document doc, int x, int y, DeskTopNote bd, _PinNoteFactory fc ) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 }
