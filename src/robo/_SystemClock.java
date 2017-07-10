@@ -40,7 +40,6 @@ public class _SystemClock {
 	private Thread							td	= new Thread() {
 													@Override
 													public void run() {
-														p.p( objI + " " + _run );
 														while( objI != null && _run ){
 															objI.doTask();
 															try{

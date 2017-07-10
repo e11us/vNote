@@ -55,7 +55,7 @@ double left click to edit content.
  
  ```
 ## dependency
-vNote uses the following libraries, special thanks to all original developers:
+vNote uses the following libraries from other github project, special thanks to all original developers:
 - [Joda Time](https://github.com/JodaOrg/joda-time) from JodaOrg
 - [sigar](https://github.com/hyperic/sigar) from hyperic
 - [jsoup](https://github.com/jhy/jsoup) from jhy

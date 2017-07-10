@@ -407,6 +407,8 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 	 */
 	@Override
 	public void deleteThis() {
+		p.p( this.getClass().toString(), "Delete-" + StickyNote.name + " Dat: " +
+				dat.getAttribute( "Note" ) + " Link: " + dat.getAttribute( "Link" ) );
 		PNF.remove( handler );
 		board.remove( handler );
 		if( dat.getAttribute( "Link" ).startsWith( "board" ) ){

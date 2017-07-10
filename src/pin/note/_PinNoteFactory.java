@@ -88,10 +88,12 @@ public class _PinNoteFactory {
 				case "GraphicNote" :
 					GraphicNote gn= new GraphicNote( nl.item( i ), board, this );
 					gn.setNoteGraphic( gc );
-					if( gn.okGo() ) {
+					if( gn.okGo() ){
 						notesID.add( gn.getID() );
 						notes.add( gn );
-					}else {
+					}else{
+						p.p( this.getClass().toString(), "Invalid GraphicNote: " +
+								gn.getID() + " is removed." );
 						elm.removeChild( gn.getXMLdataElm() );
 					}
 					break;
@@ -134,7 +136,7 @@ public class _PinNoteFactory {
 				GraphicNote gn= new GraphicNote( location2GridX( x ),
 						location2GridY( y ), board, this );
 				gn.createXMLdataElm( doc );
-				if( ! gn.setImg( bdf, img, board.getGridSizeConfig() ) ) {
+				if( !gn.setImg( bdf, img, board.getGridSizeConfig() ) ){
 					gn= null;
 					return null;
 				}

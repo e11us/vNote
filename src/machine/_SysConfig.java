@@ -1,5 +1,7 @@
 package machine;
 
+import java.awt.Dimension;
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -26,9 +28,13 @@ import org.w3c.dom.*;
 
 public class _SysConfig {
 	public final static String	sysFolderName		= "Sys";
+	public final static String	backgroundFolderName= "Background";
 	//
-	private static boolean		_initDone			= false;
+	private static int			ScreenSizeX			= 0;
+	private static int			ScreenSizeY			= 0;
+	//
 	private final static String	masterConfigFileName= "_ESMconfig.xml";
+	private static boolean		_initDone			= false;
 	private static File			masterConfig		= null;
 	private static File			boardFolder			= null;
 	private static Element		masterConfigElm		= null;
@@ -42,6 +48,18 @@ public class _SysConfig {
 		return maxWindowOnStart;
 	}
 
+	public static String getSysFolderName() {
+		return sysFolderName;
+	}
+
+	public static int getScreenSizeX() {
+		return ScreenSizeX;
+	}
+
+	public static int getScreenSizeY() {
+		return ScreenSizeY;
+	}
+
 	/*-----------------------------------------------------------------------------------------
 	 * 
 	 */
@@ -49,13 +67,17 @@ public class _SysConfig {
 		//
 		// check init first.
 		if( _initDone ){
-			p.p( "sys init completed already" );
+			p.p( "machine._SysConfig", "sys init completed already" );
 			return 0;
 		}
 		//
 		// init the clock for the clipboard monitor.
 		_SystemClock.addClock( ClipBoard._init(), 500 );
 		_SystemClock.addClock( MagnetLinkChecker._init(), 500 );
+		//
+		Dimension screenSize= Toolkit.getDefaultToolkit().getScreenSize();
+		ScreenSizeX= (int)screenSize.getWidth();
+		ScreenSizeY= (int)screenSize.getHeight();
 		//
 		masterConfig= new File( masterConfigFileName );
 		if( !masterConfig.exists() ){
@@ -70,9 +92,13 @@ public class _SysConfig {
 		maxWindowOnStart= Boolean.parseBoolean(
 				masterConfigElm.getAttribute( "ESM_MaxWindowOnStart" ) );
 		//
+		p.p( "machine._SysCOnfig", "ESM init running, time: " +
+				Helper.getCurrentTimeStampMS() + " Total board: " +
+				getTotBoardinESMB() );
+		//
 		// set the flag.
 		_initDone= true;
-		p.p( "sys init completed." );
+		p.p( "machine._SysConfig", "sys init completed." );
 		return 0;
 	}
 
@@ -87,6 +113,11 @@ public class _SysConfig {
 
 	public static File getESMBoardFile() {
 		return new File( masterConfigElm.getAttribute( "ESM_BoardFolderName" ) );
+	}
+
+	public static int getTotBoardinESMB() {
+		File esmb= getESMBoardFile();
+		return Helper.getAllFile( esmb.toString(), "xml" ).size();
 	}
 
 	public static File getESMBoardBkFolder() {

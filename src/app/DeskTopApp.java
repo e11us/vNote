@@ -93,7 +93,7 @@ public class DeskTopApp extends Application {
 		stage.show();
 		currentBoard.setWholeShift();
 		//
-		stage.getIcons().add( new Image( "file:" + _SysConfig.sysFolderName +
+		stage.getIcons().add( new Image( "file:" + _SysConfig.getSysFolderName() +
 				File.separatorChar + "icon.png" ) );
 		stage.setOnCloseRequest( new EventHandler <WindowEvent>() {
 			public void handle( WindowEvent we ) {
@@ -148,7 +148,6 @@ public class DeskTopApp extends Application {
 
 	public String createNewBoard() {
 		String newf= _SysConfig.getNewRandPath();
-		p.p( newf );
 		new DeskTopNote( new File( newf ), this );
 		return newf;
 	}
@@ -211,6 +210,19 @@ public class DeskTopApp extends Application {
 		return null;
 	}
 
+	public File chooseFile( String dir ) {
+		if( pstage != null ){
+			FileChooser fileChooser= new FileChooser();
+			File init= new File( dir );
+			if( !init.exists() )
+				init.mkdirs();
+			fileChooser.setInitialDirectory( init );
+			fileChooser.setTitle( "Choose a File" );
+			return fileChooser.showOpenDialog( pstage );
+		}
+		return null;
+	}
+
 	public File chooseDir() {
 		if( pstage != null ){
 			DirectoryChooser chooser= new DirectoryChooser();
@@ -249,82 +261,17 @@ public class DeskTopApp extends Application {
 	}
 
 	/*-----------------------------------------------------------------------------------------
-	 * closing the app.
+	 * closing the app. ( do all the exit procedure. )
 	 */
 	private void closeApp() {
 		currentBoard.storeXMLfil();
 		zipBackUp( currentBoard.getBoardFile() );
+		logConcoleOutput();
 	}
-	/*
-	private static void zipMulti() {
-		File directoryToZip = new File("C:\\projects\\workspace\\testing\\stuff");
-	
-		List<File> fileList = new ArrayList<File>();
-		System.out.println("---Getting references to all files in: " + directoryToZip.getCanonicalPath());
-		getAllFiles(directoryToZip, fileList);
-		System.out.println("---Creating zip file");
-		writeZipFile(directoryToZip, fileList);
-		System.out.println("---Done");
+
+	private void logConcoleOutput() {
+		Helper.writeFile( _SysConfig.getESMBoardBkFolder().getAbsolutePath()
+				+ File.separatorChar + "ConsoleLog " +
+				Helper.getCurrentTimeStampMS() + ".txt", true, p.CMB );
 	}
-	
-	private static void getAllFiles(File dir, List<File> fileList) {
-		try {
-			File[] files = dir.listFiles();
-			for (File file : files) {
-				fileList.add(file);
-				if (file.isDirectory()) {
-					System.out.println("directory:" + file.getCanonicalPath());
-					getAllFiles(file, fileList);
-				} else {
-					System.out.println("     file:" + file.getCanonicalPath());
-				}
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private static void writeZipFile(File directoryToZip, List<File> fileList) {
-	
-		try {
-			FileOutputStream fos = new FileOutputStream(directoryToZip.getName() + ".zip");
-			ZipOutputStream zos = new ZipOutputStream(fos);
-	
-			for (File file : fileList) {
-				if (!file.isDirectory()) { // we only zip files, not directories
-					addToZip(directoryToZip, file, zos);
-				}
-			}
-	
-			zos.close();
-			fos.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private static void addToZip(File directoryToZip, File file, ZipOutputStream zos) throws FileNotFoundException,
-			IOException {
-	
-		FileInputStream fis = new FileInputStream(file);
-	
-		// we want the zipEntry's path to be a relative path that is relative
-		// to the directory being zipped, so chop off the rest of the path
-		String zipFilePath = file.getCanonicalPath().substring(directoryToZip.getCanonicalPath().length() + 1,
-				file.getCanonicalPath().length());
-		System.out.println("Writing '" + zipFilePath + "' to zip file");
-		ZipEntry zipEntry = new ZipEntry(zipFilePath);
-		zos.putNextEntry(zipEntry);
-	
-		byte[] bytes = new byte[1024];
-		int length;
-		while ((length = fis.read(bytes)) >= 0) {
-			zos.write(bytes, 0, length);
-		}
-	
-		zos.closeEntry();
-		fis.close();
-	}*/
 }

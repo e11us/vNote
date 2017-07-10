@@ -235,6 +235,19 @@ public class Helper {
 		return "";
 	}
 
+	/*||----------------------------------------------------------------------------------------------
+	 ||| get the name for the given path.
+	||||--------------------------------------------------------------------------------------------*/
+	public static String getFilePathName( String path ) {
+		try{
+			File file= new File( path );
+			return file.getName();
+		}catch ( Exception ee ){
+			ee.printStackTrace();
+			return null;
+		}
+	}
+
 	//
 	/* =============================================================================================
 	 *-////////////////////////////////////////////////////////////////////////////////////////////
@@ -550,5 +563,277 @@ public class Helper {
 				}catch ( IOException e ){}
 			}
 		}
+	}
+
+	//
+	/* =============================================================================================
+	 *-////////////////////////////////////////////////////////////////////////////////////////////
+	 * =============================================================================================
+	 */
+	/*||----------------------------------------------------------------------------------------------
+	 ||| get all file from given path with the given ext.
+	|||| ex: "./home", "txt" will get all txt in home. returning is complete path.
+	||||--------------------------------------------------------------------------------------------*/
+	public static ArrayList <String> getAllFile( String path, String ext ) {
+		ArrayList <String> file= new ArrayList <>();
+		File dbPath= new File( path );
+		if( dbPath.exists() ){
+			try{
+				Files.walk( Paths.get( path ) ).forEach(
+						filePath -> {
+							if( !Files.isDirectory( filePath ) ){
+								file.add( filePath.toAbsolutePath().toString().replace( '\\', '/' ) );
+							}
+						} );
+			}catch ( IOException e ){
+				e.printStackTrace();
+			}
+			if( ext != null && ext.length() != 0 ){
+				for( int i= 0; i < file.size(); i++ ){
+					if( !getFileExt( file.get( i ) ).toLowerCase().equals( ext.toLowerCase() ) )
+						file.remove( i-- );
+				}
+			}
+			return file;
+		}else{
+			return file;
+		}
+	}
+
+	/*||----------------------------------------------------------------------------------------------
+	 ||| get all file from given path with the given ext.
+	|||| ex: "./home", "txt" will get all txt in home. returning is complete path.
+	||||--------------------------------------------------------------------------------------------*/
+	public static ArrayList <String> getAllFile( String path, String[] ext ) {
+		ArrayList <String> file= new ArrayList <>();
+		File dbPath= new File( path );
+		if( dbPath.exists() ){
+			try{
+				Files.walk( Paths.get( path ) ).forEach(
+						filePath -> {
+							if( !Files.isDirectory( filePath ) ){
+								file.add( filePath.toAbsolutePath().toString().replace( '\\', '/' ) );
+							}
+						} );
+			}catch ( IOException e ){
+				e.printStackTrace();
+			}
+			if( ext != null && ext.length != 0 ){
+				boolean found= false;
+				for( int i= 0; i < file.size(); i++ ){
+					found= false;
+					for( String str : ext ){
+						if( getFileExt( file.get( i ) ).toLowerCase().equals( str.toLowerCase() ) ){
+							found= true;
+							break;
+						}
+					}
+					if( !found ){
+						file.remove( i-- );
+					}
+				}
+			}
+			return file;
+		}else{
+			return file;
+		}
+	}
+
+	/*||----------------------------------------------------------------------------------------------
+	 ||| get all file from given path with the given ext.
+	|||| ex: "./home", "txt" will get all txt in home. returning is complete path.
+	||||--------------------------------------------------------------------------------------------*/
+	public static ArrayList <String> getAllFile( String path, ArrayList <String> ext ) {
+		ArrayList <String> file= new ArrayList <>();
+		File dbPath= new File( path );
+		if( dbPath.exists() ){
+			try{
+				Files.walk( Paths.get( path ) ).forEach(
+						filePath -> {
+							if( !Files.isDirectory( filePath ) ){
+								file.add( filePath.toAbsolutePath().toString().replace( '\\', '/' ) );
+							}
+						} );
+			}catch ( IOException e ){
+				e.printStackTrace();
+			}
+			if( ext != null && ext.size() != 0 ){
+				boolean found= false;
+				for( int i= 0; i < file.size(); i++ ){
+					found= false;
+					for( String str : ext ){
+						if( getFileExt( file.get( i ) ).toLowerCase().equals( str.toLowerCase() ) ){
+							found= true;
+							break;
+						}
+					}
+					if( !found ){
+						file.remove( i-- );
+					}
+				}
+			}
+			return file;
+		}else{
+			return file;
+		}
+	}
+
+	/*||----------------------------------------------------------------------------------------------
+	 ||| get dir file from given path with all the given ext.
+	|||| ex: "./home", "txt" will get all txt in home. returning is complete path.
+	||||--------------------------------------------------------------------------------------------*/
+	public static ArrayList <String> getDirFile( String spath, ArrayList <String> ext ) {
+		if( spath == null || ext == null )
+			return null;
+		File folder= new File( spath );
+		File[] listOfFiles= folder.listFiles();
+		ArrayList <String> res= new ArrayList <>();
+		if( ext.size() == 0 ){
+			for( int i= 0; i < listOfFiles.length; i++ ){
+				if( listOfFiles[i].isFile() )
+					res.add( listOfFiles[i].toString() );
+			}
+			return res;
+		}else{
+			for( int i= 0; i < listOfFiles.length; i++ ){
+				for( String tmp : ext ){
+					if( listOfFiles[i].isFile()
+							&& getFileExt( listOfFiles[i].toString() ).toLowerCase().equals( tmp.toLowerCase() ) ){
+						res.add( listOfFiles[i].toString() );
+						break;
+					}
+				}
+			}
+			return res;
+		}
+	}
+
+	/*||----------------------------------------------------------------------------------------------
+	 ||| get all files that match the name + ext.
+	||||--------------------------------------------------------------------------------------------*/
+	public static ArrayList <String> getAllFileMatch( String root, String file ) {
+		ArrayList <String> res= new ArrayList <>();
+		if( root == null || file == null )
+			return res;
+		//
+		File dbPath= new File( root );
+		if( dbPath.exists() ){
+			try{
+				Files.walk( Paths.get( root ) ).forEach(
+						filePath -> {
+							if( !Files.isDirectory( filePath ) &&
+									getFilePathName( filePath.getFileName().toString() ).equals( file ) ){
+								res.add( filePath.toString() );
+							}
+						} );
+			}catch ( IOException e ){
+				e.printStackTrace();
+			}
+			return res;
+		}else{
+			return res;
+		}
+	}
+
+	/* --------------------------------------------------------------------------
+	 * --- get all the sub folder name in the given folder.
+	 *
+	 * ( need to recheck )
+	 *
+	 * ----------------------
+	 * ------------------------------------------------------- */
+	public static ArrayList <String> getAllSubFolder( String path ) {
+		ArrayList <String> folders= new ArrayList <>();
+		File dbPath= new File( path );
+		if( dbPath.exists() ){
+			try{
+				Files.walk( Paths.get( dbPath.getAbsolutePath() ) ).forEach(
+						filePath -> {
+							if( Files.isDirectory( filePath ) ){
+								folders.add( filePath.toString().replace( '\\',
+										'/' ) );
+							}
+						} );
+			}catch ( IOException e ){
+				e.printStackTrace();
+			}
+			return folders;
+		}else{
+			return null;
+		}
+	}
+
+	/* --------------------------------------------------------------------------
+	 * --- get only the direct sub folder name in the given folder. ( return is complete path of sub folder. )
+	 * --------------
+	 * --------------------------------------------------------------- */
+	public static ArrayList <String> getDirSubFolder( String path ) {
+		File file= new File( path );
+		String[] directories= file.list( new FilenameFilter() {
+			@Override
+			public boolean accept( File current, String name ) {
+				return new File( current, name ).isDirectory();
+			}
+		} );
+		if( directories == null )
+			return new ArrayList <>();
+		ArrayList <String> ret= new ArrayList <>();
+		ArrayList <String> ret2= new ArrayList <>();
+		String T;
+		//
+		String pre= null;
+		try{
+			pre= file.getCanonicalPath();
+		}catch ( IOException e ){
+			e.printStackTrace();
+		}
+		//
+		for( String tmp : directories ){
+			if( tmp.charAt( 0 ) == '_' )
+				ret2.add( pre.replace( '\\', '/' ) + "/" + tmp );
+			else ret.add( pre.replace( '\\', '/' ) + "/" + tmp );
+		}
+		ret2.addAll( ret );
+		return ret2;
+	}
+
+	/*||----------------------------------------------------------------------------------------------
+	 ||| get dir file from given path with the given ext.
+	|||| ex: "./home", "txt" will get all txt in home. returning is complete path.
+	||||--------------------------------------------------------------------------------------------*/
+	public static ArrayList <String> getDirFile( String spath, String ext ) {
+		if( spath == null || ext == null )
+			return null;
+		File folder= new File( spath );
+		File[] listOfFiles= folder.listFiles();
+		ArrayList <String> res= new ArrayList <>();
+		if( ext.length() == 0 ){
+			for( int i= 0; i < listOfFiles.length; i++ ){
+				if( listOfFiles[i].isFile() )
+					res.add( listOfFiles[i].toString() );
+			}
+			return res;
+		}else{
+			for( int i= 0; i < listOfFiles.length; i++ ){
+				if( listOfFiles[i].isFile()
+						&& getFileExt( listOfFiles[i].toString() ).toLowerCase().equals( ext.toLowerCase() ) )
+					res.add( listOfFiles[i].toString() );
+			}
+			return res;
+		}
+	}
+
+	/*||----------------------------------------------------------------------------------------------
+	 ||| reutrn full path.
+	||||--------------------------------------------------------------------------------------------*/
+	public static String getRandomFile( String spath ) {
+		if( spath == null )
+			return null;
+		File path= new File( spath );
+		if( path.exists() && path.isDirectory() ){
+			ArrayList <String> sub= getDirFile( spath, "" );
+			return sub.get( (int) ( Math.random() * sub.size() ) );
+		}
+		return null;
 	}
 }

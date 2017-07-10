@@ -1,6 +1,8 @@
 package app;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -42,8 +44,11 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -60,6 +65,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import machine.Helper;
+import machine._SysConfig;
 import machine.p;
 import pin.Pin;
 import pin.PinCopyable;
@@ -80,10 +86,12 @@ public class DeskTopNote {
 	private Document				doc					= null;
 	private Element					elm					= null;
 	//
+	// focusholder at z=3, bgImg at z=4. liveBG at z= 2.
 	private DeskTopApp				app					= null;
 	private Scene					scn					= null;
 	private Group					rootSys				= null;
 	private Group					root				= null;
+	private Group					bgNode				= null;
 	private Region					focusHolder			= null;
 	private Node					rightMenu			= null;
 	private BorderPane				topMenuP			= null;
@@ -148,24 +156,26 @@ public class DeskTopNote {
 
 	public String createNewBoard() {
 		String ret= app.createNewBoard();
+		p.p( this.getClass().toString(), "New Board: " + ret + " is created." );
 		return ret;
 	}
 
 	public void openBoard( String inp ) {
 		store();
+		p.p( this.getClass().toString(), "Switch to Board: " + inp );
 		app.switch2Board( inp );
 	}
-	
+
 	public File createBoardFolder() {
 		File fold= new File( Helper.getFileName( file.toString() ) );
 		fold.mkdirs();
 		return fold;
 	}
-	
-	public String getUniqNameInBoardFolder( String ext) {
+
+	public String getUniqNameInBoardFolder( String ext ) {
 		String uniq= Helper.randAN( 12 );
 		File ret= new File( Helper.getFileName( file.toString() ) + uniq + ext );
-		while( ret.exists() ) {
+		while( ret.exists() ){
 			uniq= Helper.randAN( 12 );
 			ret= new File( Helper.getFileName( file.toString() ) + uniq + ext );
 		}
@@ -214,7 +224,7 @@ public class DeskTopNote {
 		Scene stageScene= new Scene( comp, 300, 100 );
 		pu.set( stageScene, true );
 	}
-	
+
 	/*-----------------------------------------------------------------------------------------
 	 * constructor:
 	 * create a board data with a given root elm. 
@@ -399,8 +409,14 @@ public class DeskTopNote {
 			elm.setAttribute( "WindowSizeX", "1920" );
 		if( elm.getAttribute( "WindowSizeY" ).equals( "" ) )
 			elm.setAttribute( "WindowSizeY", "1080" );
-		if( elm.getAttribute( "ColorBackGround" ).equals( "" ) )
-			elm.setAttribute( "ColorBackGround", "333333" );
+		if( elm.getAttribute( "ColorBackGround1" ).equals( "" ) )
+			elm.setAttribute( "ColorBackGround1", "333333" );
+		if( elm.getAttribute( "ColorBackGround2" ).equals( "" ) )
+			elm.setAttribute( "ColorBackGround2", "777777" );
+		if( elm.getAttribute( "BackGroundImage" ).equals( "" ) )
+			elm.setAttribute( "BackGroundImage", "null" );
+		if( elm.getAttribute( "BgSelection" ).equals( "" ) )
+			elm.setAttribute( "BgSelection", "color" );
 		if( elm.getAttribute( "WindowMaxOnStart" ).equals( "" ) )
 			elm.setAttribute( "WindowMaxOnStart", "true" );
 		if( elm.getAttribute( "Name" ).equals( "" ) )
@@ -419,12 +435,16 @@ public class DeskTopNote {
 	private void sceneSetup() {
 		root= new Group();
 		focusHolder= new Region();
-		focusHolder.setMinHeight( 10000 );
-		focusHolder.setMinWidth( 10000 );
+		focusHolder.setMinHeight( _SysConfig.getScreenSizeY() );
+		focusHolder.setMinWidth( _SysConfig.getScreenSizeX() );
 		focusHolder.setTranslateZ( 3 );
-		focusHolder.setStyle( "-fx-background-color: #" +
-				elm.getAttribute( "ColorBackGround" ) + ";" );
+		focusHolder.setStyle( "-fx-background-color: rgba(1.0, 1.0, 1.0, 0.03);" );
+		//
+		bgNode= new Group();
+		SetBg();
+		//
 		rootSys= new Group();
+		rootSys.getChildren().add( bgNode );
 		rootSys.getChildren().add( focusHolder );
 		rootSys.getChildren().add( root );
 		if( Boolean.parseBoolean( elm.getAttribute( "WindowMaxOnStart" ) ) ){
@@ -601,6 +621,9 @@ public class DeskTopNote {
 					case "n" :
 						setBoardNamePopUp();
 						break;
+					case "m" :
+						popUpConsoleLog();
+						break;
 					case "X" :
 						app.ClipBoardCut= true;
 					case "C" :
@@ -690,8 +713,8 @@ public class DeskTopNote {
 				Pin ret= PNF.createNewNote(
 						tmi.getText().substring( 4, tmi.getText().length() ),
 						(int) ( xx + x ), (int) ( yy + y ) );
-				if( ret != null ) {
-					root.getChildren().add(ret  );
+				if( ret != null ){
+					root.getChildren().add( ret );
 					store();
 				}
 				removeRightMenu();
@@ -815,6 +838,39 @@ public class DeskTopNote {
 			ppt.getItems().add( name );
 			ppt.getItems().add( scrolGD );
 			ppt.getItems().add( new SeparatorMenuItem() );
+			//
+			MenuItem chooseBG= new MenuItem( "choose background picture" );
+			chooseBG.setOnAction( e -> {
+				File bg= app.chooseFile( _SysConfig.sysFolderName + File.separatorChar
+						+ _SysConfig.backgroundFolderName );
+				if( bg != null ){
+					elm.setAttribute( "BackGroundImage", bg.toString().replace( '\\', '/' ) );
+					elm.setAttribute( "BgSelection", "img" );
+					SetBg();
+				}
+			} );
+			ppt.getItems().add( chooseBG );
+			//
+			ToggleGroup bgo= new ToggleGroup();
+			RadioMenuItem bgimg= new RadioMenuItem( "bg use image" );
+			bgimg.setToggleGroup( bgo );
+			RadioMenuItem bgcol= new RadioMenuItem( "bg use color" );
+			bgcol.setToggleGroup( bgo );
+			ppt.getItems().add( bgimg );
+			ppt.getItems().add( bgcol );
+			if( elm.getAttribute( "BgSelection" ).equals( "img" ) )
+				bgimg.setSelected( true );
+			else bgcol.setSelected( true );
+			bgimg.setOnAction( e -> {
+				elm.setAttribute( "BgSelection", "img" );
+				SetBg();
+			} );
+			bgcol.setOnAction( e -> {
+				elm.setAttribute( "BgSelection", "color" );
+				SetBg();
+			} );
+			ppt.getItems().add( new SeparatorMenuItem() );
+			//
 			//	CheckMenuItem htmlMenuItem = new CheckMenuItem("HTML");
 		}
 	}
@@ -823,7 +879,6 @@ public class DeskTopNote {
 	 * left mouse drag a rec and relase.
 	 */
 	public void mouseleftDrag( int x, int y ) {
-		//p.p( x + " " + y );
 		if( mouseDragInit == null ){
 			mouseDragInit= new Point2D( x, y );
 			if( dragRec != null ){
@@ -924,5 +979,53 @@ public class DeskTopNote {
 		if( rightMenu != null ){
 			root.getChildren().remove( rightMenu );
 		}
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * 
+	 */
+	private void popUpConsoleLog() {
+		popUp pu= new popUp( "Console Output." );
+		VBox comp= new VBox();
+		TextArea ta= new TextArea( Helper.ALstr2str( p.CMB ) );
+		ta.setEditable( false );
+		ta.setWrapText( true );
+		int w= _SysConfig.getScreenSizeX();
+		int h= _SysConfig.getScreenSizeY();
+		ta.setMaxWidth( w / 2 );
+		ta.setMaxHeight( h / 2 );
+		ta.setMinWidth( w / 2 );
+		ta.setMinHeight( h / 2 );
+		comp.getChildren().add( ta );
+		Scene stageScene= new Scene( comp, w / 2, h / 2 );
+		pu.set( stageScene, true );
+	}
+
+	/*-----------------------------------------------------------------------------------------
+	 * 
+	 */
+	private void SetBg() {
+		bgNode.getChildren().removeAll( bgNode.getChildren() );
+		//
+		if( elm.getAttribute( "BgSelection" ).equals( "img" )
+				&& !elm.getAttribute( "BackGroundImage" ).equals( "null" ) ){
+			try{
+				FileInputStream input;
+				input= new FileInputStream( elm.getAttribute( "BackGroundImage" ) );
+				Image img= new Image( input );
+				ImageView imgV= new ImageView();
+				imgV.setImage( img );
+				imgV.setTranslateZ( 4 );
+				//
+				focusHolder.setStyle( "-fx-background-color: rgba(1.0, 1.0, 1.0, 0.03);" );
+				bgNode.getChildren().add( imgV );
+				return;
+			}catch ( FileNotFoundException e ){
+				// silent fail.
+			}
+		}
+		focusHolder.setStyle( "-fx-background-color: " +
+				"linear-gradient(#" + elm.getAttribute( "ColorBackGround1" ) +
+				", #" + elm.getAttribute( "ColorBackGround2" ) + " );" );
 	}
 }

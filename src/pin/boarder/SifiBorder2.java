@@ -41,4 +41,9 @@ public class SifiBorder2 implements PinBorderInterface {
 		// TODO Auto-generated method stub
 		return 0;
 	}
+
+	@Override
+	public void setLinkType( int inp ) {
+		// TODO Auto-generated method stub
+	}
 }
