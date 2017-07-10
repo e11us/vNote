@@ -6,7 +6,7 @@ import javafx.scene.shape.Polyline;
 
 
 
-public class SifiBorder1 implements PinBorder {
+public class SifiBorder1 implements PinBorderInterface {
 	private Group	nodes;
 	private int		thic;
 

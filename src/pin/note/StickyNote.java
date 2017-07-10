@@ -26,7 +26,7 @@ import machine.p;
 import pin.Pin;
 import pin.PinCopyable;
 import pin.PinInterface;
-import pin.boarder.PinBorder;
+import pin.boarder.PinBorderInterface;
 import pin.boarder._PinBorderFactory;
 import robo.ClipBoard;
 
@@ -43,14 +43,13 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 	private StickyNote			handler		= this;
 	private DeskTopNote			board		= null;
 	private _PinNoteFactory		PNF			= null;
-	private PinBorder			bd			= null;
+	private PinBorderInterface	bd			= null;
 	//
 	private Element				dat			= null;
 	//
 	private Label				lb			= null;
 	private TextArea			ta			= null;
 	private HBox				hb			= null;
-	private Group				bdNodes		= null;
 	//
 	private boolean				BasefocusOn	= false;
 	private boolean				TAfocusOn	= false;
@@ -268,24 +267,31 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 						}
 						break;
 					case "x" :
-						File fl= board.chooseDir();
-						if( fl != null ){
-							dat.setAttribute( "Link", fl.getAbsolutePath().replace( '\\', '/' ) );
+						if( dat.getAttribute( "Link" ).equals( "null" ) ){
+							File fl= board.chooseDir();
+							if( fl != null ){
+								dat.setAttribute( "Link", fl.getAbsolutePath().replace( '\\', '/' ) );
+							}
 						}
 						break;
 					case "c" :
-						File f2= board.chooseFile();
-						if( f2 != null ){
-							dat.setAttribute( "Link", f2.getAbsolutePath().replace( '\\', '/' ) );
+						if( dat.getAttribute( "Link" ).equals( "null" ) ){
+							File f2= board.chooseFile();
+							if( f2 != null ){
+								dat.setAttribute( "Link", f2.getAbsolutePath().replace( '\\', '/' ) );
+							}
 						}
 						break;
 					case "b" :
-						dat.setAttribute( "Link", "board " + board.createNewBoard() );
+						// only create new board if the link is null.
+						if( dat.getAttribute( "Link" ).equals( "null" ) )
+							dat.setAttribute( "Link", "board " + board.createNewBoard() );
 						break;
 					case "v" :
 						String msg= ClipBoard.getClipBoard();
 						if( msg.startsWith( "http://" ) || msg.startsWith( "https://" ) ){
-							dat.setAttribute( "Link", msg );
+							if( dat.getAttribute( "Link" ).equals( "null" ) )
+								dat.setAttribute( "Link", msg );
 						}else{
 							dat.setAttribute( "Note", msg );
 							lb.setText( msg );
@@ -294,6 +300,7 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 						break;
 					case "z" :
 						dat.setAttribute( "Link", "null" );
+						break;
 					case "C" :
 						if( dat.getAttribute( "Link" ).startsWith( "board" ) ){
 							board.popMsg( "Note with Board Link can not be copy or cut." );
@@ -315,7 +322,7 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 				}
 				board.storeXMLfil();
 				BasefocusOn= true;
-				changeMode();
+				setNoteGraphic( board.getGridSizeConfig() );
 			}
 		} );
 		this.setOnMouseDragged( e -> {
@@ -424,9 +431,19 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 		this.setMaxHeight( height );
 		this.setMinWidth( width );
 		this.setMaxWidth( width );
-		// set boarder .
+		// get a and then set boarder .
 		if( bd == null )
 			bd= _PinBorderFactory.getBoarder( dat.getAttribute( "BoarderType" ) );
+		String lstr= dat.getAttribute( "Link" );
+		if( lstr.equals( "null" ) ){
+			bd.setLinkType( 0 );
+		}else if( lstr.startsWith( "http://" ) || lstr.startsWith( "https://" ) ){
+			bd.setLinkType( 1 );
+		}else if( lstr.startsWith( "board" ) ){
+			bd.setLinkType( 3 );
+		}else{
+			bd.setLinkType( 2 );
+		}
 		// sheift the note.
 		this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
 				gc[2] / 2 );
@@ -505,7 +522,9 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 		// add back box and border.
 		this.getChildren().add( bd.getNodes() );
 		this.getChildren().add( hb );
-		// change txt.
+		lb.setText( dat.getAttribute( "Note" ) );
+		/*
+		 * // change txt.
 		String lstr= dat.getAttribute( "Link" );
 		if( lstr.equals( "null" ) ){
 			lb.setText( dat.getAttribute( "Note" ) );
@@ -516,6 +535,7 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 		}else{
 			lb.setText( "<F+>\n" + dat.getAttribute( "Note" ) );
 		}
+		 */
 	}
 
 	/*-----------------------------------------------------------------------------------------

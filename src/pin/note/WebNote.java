@@ -21,7 +21,7 @@ import machine.Helper;
 import machine.p;
 import pin.Pin;
 import pin.PinCopyable;
-import pin.boarder.PinBorder;
+import pin.boarder.PinBorderInterface;
 import pin.boarder._PinBorderFactory;
 import robo.ClipBoard;
 
@@ -38,7 +38,7 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 	private WebNote				handler		= this;
 	private DeskTopNote			board		= null;
 	private _PinNoteFactory		PNF			= null;
-	private PinBorder			bd			= null;
+	private PinBorderInterface	bd			= null;
 	//
 	private Element				dat			= null;
 	//
@@ -350,6 +350,7 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 					case "z" :
 						totLink= 0;
 						dat.setAttribute( "Link", "null" );
+						break;
 					default :
 						break;
 					case "C" :

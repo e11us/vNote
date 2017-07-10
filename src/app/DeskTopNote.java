@@ -21,6 +21,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
@@ -154,6 +155,22 @@ public class DeskTopNote {
 		store();
 		app.switch2Board( inp );
 	}
+	
+	public File createBoardFolder() {
+		File fold= new File( Helper.getFileName( file.toString() ) );
+		fold.mkdirs();
+		return fold;
+	}
+	
+	public String getUniqNameInBoardFolder( String ext) {
+		String uniq= Helper.randAN( 12 );
+		File ret= new File( Helper.getFileName( file.toString() ) + uniq + ext );
+		while( ret.exists() ) {
+			uniq= Helper.randAN( 12 );
+			ret= new File( Helper.getFileName( file.toString() ) + uniq + ext );
+		}
+		return uniq;
+	}
 
 	public File chooseDir() {
 		return app.chooseDir();
@@ -197,7 +214,7 @@ public class DeskTopNote {
 		Scene stageScene= new Scene( comp, 300, 100 );
 		pu.set( stageScene, true );
 	}
-
+	
 	/*-----------------------------------------------------------------------------------------
 	 * constructor:
 	 * create a board data with a given root elm. 
@@ -360,8 +377,20 @@ public class DeskTopNote {
 	private void completeAllAttr() {
 		if( elm.getAttribute( "GridSizeX" ).equals( "" ) )
 			elm.setAttribute( "GridSizeX", "100" );
+		if( elm.getAttribute( "GridSizeXmin" ).equals( "" ) )
+			elm.setAttribute( "GridSizeXmin", "50" );
+		if( elm.getAttribute( "GridSizeXmax" ).equals( "" ) )
+			elm.setAttribute( "GridSizeXmax", "600" );
+		if( elm.getAttribute( "GridSizeXstep" ).equals( "" ) )
+			elm.setAttribute( "GridSizeXstep", "5" );
 		if( elm.getAttribute( "GridSizeY" ).equals( "" ) )
 			elm.setAttribute( "GridSizeY", "100" );
+		if( elm.getAttribute( "GridSizeYmin" ).equals( "" ) )
+			elm.setAttribute( "GridSizeYmin", "10" );
+		if( elm.getAttribute( "GridSizeYmax" ).equals( "" ) )
+			elm.setAttribute( "GridSizeYmax", "300" );
+		if( elm.getAttribute( "GridSizeYstep" ).equals( "" ) )
+			elm.setAttribute( "GridSizeYstep", "3" );
 		if( elm.getAttribute( "GridSpaceX" ).equals( "" ) )
 			elm.setAttribute( "GridSpaceX", "15" );
 		if( elm.getAttribute( "GridSpaceY" ).equals( "" ) )
@@ -424,16 +453,16 @@ public class DeskTopNote {
 		focusHolder.setOnScroll( e -> {
 			if( e.getDeltaY() > 0.0 ){
 				root.setTranslateY( ShiftKeyboardSpeedY *
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) )
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) )
 						+ root.getTranslateY() );
-				camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedY * 
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) ) ) );
+				camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedY *
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) ) ) );
 			}else{
-				root.setTranslateY( -ShiftKeyboardSpeedY * 
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) )
+				root.setTranslateY( -ShiftKeyboardSpeedY *
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) )
 						+ root.getTranslateY() );
 				camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedY *
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize"  ) ) ) );
+						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) ) ) );
 			}
 		} );
 		focusHolder.setOnMouseDragged( e -> {
@@ -502,7 +531,7 @@ public class DeskTopNote {
 					case 8 :
 						// backspace.
 						mouseleftDragRecEnd();
-						if( copylist.size() > 0 ){
+						if( copylist != null && copylist.size() > 0 ){
 							for( PinCopyable tmp : copylist ){
 								tmp.deleteAfterCut();
 							}
@@ -645,7 +674,6 @@ public class DeskTopNote {
 		removeFocusOfMe();
 		mouseleftDragEnd();
 		mouseleftDragRecEnd();
-		//createBoardRightMenu( e.getSceneX() + camShift.getX(), e.getSceneY() + camShift.getY() );
 		createBoardRightMenu( e.getScreenX(), e.getScreenY(), e.getSceneX(), e.getSceneY(),
 				camShift.getX(), camShift.getY() );
 	}
@@ -659,10 +687,13 @@ public class DeskTopNote {
 		for( String tmp : _PinNoteFactory.NoteTypes ){
 			MenuItem tmi= new MenuItem( "New " + tmp );
 			tmi.setOnAction( e -> {
-				root.getChildren().add( PNF.createNewNote(
+				Pin ret= PNF.createNewNote(
 						tmi.getText().substring( 4, tmi.getText().length() ),
-						(int) ( xx + x ), (int) ( yy + y ) ) );
-				store();
+						(int) ( xx + x ), (int) ( yy + y ) );
+				if( ret != null ) {
+					root.getChildren().add(ret  );
+					store();
+				}
 				removeRightMenu();
 				removeFocusOfMe();
 			} );
@@ -685,7 +716,10 @@ public class DeskTopNote {
 			//
 			Menu gw= new Menu( "Grid Width" );
 			ToggleGroup gwG= new ToggleGroup();
-			for( int i= 30; i < 500; i+= 5 ){
+			int xs= Integer.parseInt( elm.getAttribute( "GridSizeXmin" ) );
+			int xe= Integer.parseInt( elm.getAttribute( "GridSizeXmax" ) );
+			int xt= Integer.parseInt( elm.getAttribute( "GridSizeXstep" ) );
+			for( int i= xs; i < xe; i+= xt ){
 				RadioMenuItem mi= new RadioMenuItem( i + "" );
 				mi.setToggleGroup( gwG );
 				mi.setOnAction( e -> {
@@ -701,7 +735,10 @@ public class DeskTopNote {
 			//
 			Menu gh= new Menu( "Grid Height" );
 			ToggleGroup ghG= new ToggleGroup();
-			for( int i= 30; i < 500; i+= 5 ){
+			int ys= Integer.parseInt( elm.getAttribute( "GridSizeYmin" ) );
+			int ye= Integer.parseInt( elm.getAttribute( "GridSizeYmax" ) );
+			int yt= Integer.parseInt( elm.getAttribute( "GridSizeYstep" ) );
+			for( int i= ys; i < ye; i+= yt ){
 				RadioMenuItem mi= new RadioMenuItem( i + "" );
 				mi.setToggleGroup( ghG );
 				mi.setOnAction( e -> {
@@ -854,7 +891,7 @@ public class DeskTopNote {
 		Scene stageScene= new Scene( comp, 300, 100 );
 		pu.set( stageScene, true );
 	}
-	
+
 	/*-----------------------------------------------------------------------------------------
 	 * create a pop up menu for inter the new board name.
 	 */
@@ -868,10 +905,10 @@ public class DeskTopNote {
 			public void handle( KeyEvent event ) {
 				if( event.getCode() == KeyCode.ENTER ){
 					pu.close();
-					try {
-						Integer.parseInt(  nameField.getText()  );
+					try{
+						Integer.parseInt( nameField.getText() );
 						elm.setAttribute( "ScrollGridSize", nameField.getText() );
-					}catch( Exception ee ) {}
+					}catch ( Exception ee ){}
 				}
 			}
 		} );

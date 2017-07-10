@@ -5,7 +5,7 @@ public class _PinBorderFactory {
 			"sifi1", "sifi2", "default"
 	};
 
-	public static PinBorder getBoarder( String name ) {
+	public static PinBorderInterface getBoarder( String name ) {
 		switch( name ){
 			case "sifi1" :
 				return new SifiBorder1();

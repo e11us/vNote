@@ -4,7 +4,7 @@ import javafx.scene.Group;
 
 
 
-public class SifiBorder2 implements PinBorder {
+public class SifiBorder2 implements PinBorderInterface {
 	private Group	nodes;
 	private int		thic;
 

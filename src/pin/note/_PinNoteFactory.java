@@ -1,5 +1,6 @@
 package pin.note;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.TreeSet;
 import org.w3c.dom.Document;
@@ -69,20 +70,30 @@ public class _PinNoteFactory {
 			switch( nl.item( i ).getNodeName() ){
 				case "StickyNote" :
 					StickyNote sn= new StickyNote( nl.item( i ), board, this );
-					sn.setNoteGraphic( board.getGridSizeConfig() );
+					sn.setNoteGraphic( gc );
 					notesID.add( sn.getID() );
 					notes.add( sn );
 					break;
 				case "PinNoteStyle" :
 					PinNoteStyle pns= new PinNoteStyle( nl.item( i ), board, this );
-					pns.setNoteGraphic( board.getGridSizeConfig() );
+					pns.setNoteGraphic( gc );
 					notes.add( pns );
 					break;
 				case "WebNote" :
 					WebNote wn= new WebNote( nl.item( i ), board, this );
-					wn.setNoteGraphic( board.getGridSizeConfig() );
+					wn.setNoteGraphic( gc );
 					notesID.add( wn.getID() );
 					notes.add( wn );
+					break;
+				case "GraphicNote" :
+					GraphicNote gn= new GraphicNote( nl.item( i ), board, this );
+					gn.setNoteGraphic( gc );
+					if( gn.okGo() ) {
+						notesID.add( gn.getID() );
+						notes.add( gn );
+					}else {
+						elm.removeChild( gn.getXMLdataElm() );
+					}
 					break;
 			}
 		}
@@ -115,9 +126,23 @@ public class _PinNoteFactory {
 				elm.appendChild( wn.getXMLdataElm() );
 				return wn;
 			case "EnhancedNote" :
+				//
 				return null;
 			case "GraphicNote" :
-				return null;
+				File bdf= board.createBoardFolder();
+				File img= board.chooseFile();
+				GraphicNote gn= new GraphicNote( location2GridX( x ),
+						location2GridY( y ), board, this );
+				gn.createXMLdataElm( doc );
+				if( ! gn.setImg( bdf, img, board.getGridSizeConfig() ) ) {
+					gn= null;
+					return null;
+				}
+				gn.setNoteGraphic( board.getGridSizeConfig() );
+				notesID.add( gn.getID() );
+				notes.add( gn );
+				elm.appendChild( gn.getXMLdataElm() );
+				return gn;
 			case "PinNoteStyle" :
 				PinNoteStyle pns= new PinNoteStyle( location2GridX( x ),
 						location2GridY( y ), board, this );

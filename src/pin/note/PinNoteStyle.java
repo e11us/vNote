@@ -30,7 +30,7 @@ import machine.Helper;
 import machine.p;
 import pin.Pin;
 import pin.PinInterface;
-import pin.boarder.PinBorder;
+import pin.boarder.PinBorderInterface;
 import pin.boarder._PinBorderFactory;
 
 
@@ -228,7 +228,7 @@ public class PinNoteStyle extends Pin {
 				gc[3] / 2 );
 		//
 		if( bd == null ){
-			PinBorder b= _PinBorderFactory.getBoarder( "default" );
+			PinBorderInterface b= _PinBorderFactory.getBoarder( "default" );
 			b.set( width, height, 2, "ffffff", "0000ff" );
 			bd= b.getNodes();
 		}

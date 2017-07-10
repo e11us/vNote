@@ -6,7 +6,10 @@ import javafx.scene.Node;
 
 
 
-public interface PinBorder {
+public interface PinBorderInterface {
+	// 0 for no link, 1 = web, 2 = local, 3 = board.
+	public void setLinkType( int inp );
+
 	public void set( int w, int h, int thic, String Cbd, String Ctl );
 
 	public Group getNodes();
