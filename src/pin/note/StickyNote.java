@@ -10,6 +10,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.effect.BlurType;
@@ -169,9 +170,12 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 				board.removeFocusOfMe();
 				return;
 			}
+			board.removeFocusOfMe();
 			// if this is click.
 			switch( e.getButton() ){
 				case PRIMARY :
+					if( board.isWallpaperMode() )
+						return;
 					if( e.getClickCount() == 1 ){
 						handler.requestFocus();
 						BasefocusOn= true;
@@ -194,14 +198,19 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 							Helper.openWebWithWindows( lstr );
 							return;
 						}else if( lstr.startsWith( "board" ) ){
+							if( board.isWallpaperMode() )
+								return;
 							board.removeFocusOfMe();
 							board.openBoard( lstr.replaceFirst( "board ", "" ) );
+							board.closeIdleLocker();
 							return;
 						}else{
 							Helper.openFileWithWindows( lstr );
 							return;
 						}
 					}
+				default :
+					break;
 			}
 		} );
 		this.focusedProperty().addListener( new ChangeListener <Boolean>() {
@@ -326,6 +335,8 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 			}
 		} );
 		this.setOnMouseDragged( e -> {
+			if( board.isWallpaperMode() )
+				return;
 			// reset focus of all.
 			board.removeFocusOfMe();
 			//
@@ -446,11 +457,13 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 		}else{
 			bd.setLinkType( 2 );
 		}
-		// sheift the note.
-		this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
-				gc[2] / 2 );
-		this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
-				gc[3] / 2 );
+		// sheift the note. if the location is not managed.
+		if( !super.locationManaged ){
+			this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
+					gc[2] / 2 );
+			this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
+					gc[3] / 2 );
+		}
 		//
 		lb.setWrapText( true );
 		lb.setMaxWidth( width - bd.getLeftOS() - bd.getRightOS() );
@@ -560,6 +573,7 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 	}
 
 	private void useTextArea() {
+		board.closeIdleLocker();
 		handler.setStyle( "-fx-background-color: #" +
 				dat.getAttribute( "ColorBackGround1" ) );
 		ta.setStyle(
@@ -567,8 +581,10 @@ public class StickyNote extends Pin implements PinNoteInterface, PinCopyable {
 						dat.getAttribute( "ColorBackGround1" ) + ";" +
 						"-fx-border-color: #" +
 						dat.getAttribute( "ColorBackGround1" ) + ";" +
-						"-fx-text-fill: black; " +
-						"-fx-font-size: " + dat.getAttribute( "FontSize" ) + ";" );
+						"-fx-text-fill: #" + dat.getAttribute( "ColorText" ) + ";" +
+						"-fx-font-size: " + dat.getAttribute( "FontSize" ) + ";" +
+						"-fx-control-inner-background: #" +
+						dat.getAttribute( "ColorBackGround1" ) + ";" );
 		bd.set( width, height, Integer.parseInt( dat.getAttribute( "BoarderThick" ) ),
 				dat.getAttribute( "ColorBoarder" ),
 				dat.getAttribute( "ColorTitle" ) );

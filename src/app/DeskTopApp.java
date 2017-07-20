@@ -23,6 +23,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.SceneAntialiasing;
 import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
@@ -34,6 +36,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
 import machine.p;
 import machine.Helper;
@@ -51,11 +54,14 @@ public class DeskTopApp extends Application {
 	protected ArrayList <PinCopyable>	ClipBoard		= new ArrayList <>();
 	protected ArrayList <Point2D>		ClipBoardOS		= new ArrayList <Point2D>();
 	protected boolean					ClipBoardCut	= false;
+	protected boolean					wallpaperMode	= false;
 	//
 	private ArrayList <DeskTopNote>		boardStack		= new ArrayList <>();
 	private ArrayList <String>			boardNameStack	= new ArrayList <>();
 	private DeskTopNote					currentBoard	= null;
+	private DeskTopNoteAr				funcBoard		= null;
 	private Stage						pstage			= null;
+	// 
 
 	/*-----------------------------------------------------------------------------------------
 	 * a public function to call launch.
@@ -90,8 +96,9 @@ public class DeskTopApp extends Application {
 		}
 		//
 		stage.setScene( currentBoard.refreshRoot() );
+		switchWallPaperMode();
 		stage.show();
-		currentBoard.setWholeShift();
+		currentBoard.setWindowSizeChange();
 		//
 		stage.getIcons().add( new Image( "file:" + _SysConfig.getSysFolderName() +
 				File.separatorChar + "icon.png" ) );
@@ -104,11 +111,26 @@ public class DeskTopApp extends Application {
 		} );
 		//
 		stage.widthProperty().addListener( ( obs, oldVal, newVal ) -> {
-			currentBoard.setWholeShift();
+			currentBoard.setWindowSizeChange();
 		} );
 		stage.heightProperty().addListener( ( obs, oldVal, newVal ) -> {
-			currentBoard.setWholeShift();
+			currentBoard.setWindowSizeChange();
 		} );
+		stage.xProperty().addListener( ( obs, oldVal, newVal ) -> {
+			if( wallpaperMode )
+				stage.setX( 0.0 );
+		} );
+		stage.yProperty().addListener( ( obs, oldVal, newVal ) -> {
+			if( wallpaperMode )
+				stage.setY( 0.0 );
+		} );
+		stage.setFullScreenExitHint( "" );
+	}
+
+	public void switchWallPaperMode() {
+		if( wallpaperMode ){
+			pstage.setFullScreen( true );
+		}else pstage.setFullScreen( false );
 	}
 
 	public Stage getPrimStage() {
@@ -146,6 +168,35 @@ public class DeskTopApp extends Application {
 		}
 	}
 
+	/*-----------------------------------------------------------------------------------------
+	 * action related to board.
+	 */
+	public void memroyBoard() {
+		if( funcBoard != null ){
+			funcBoard.close();
+			funcBoard= null;
+		}
+		File mem= new File( _SysConfig.getESMBoardFile().toString() +
+				File.separatorChar + "_MemoryBoard.xml" );
+		//
+		funcBoard= new DeskTopNoteAr( mem, this, PinArrFactory.types[0] );
+		Scene ret= funcBoard.refreshRoot();
+		pstage.setTitle( "Memory Board" );
+		if( ret != null )
+			pstage.setScene( ret );
+		else p.p( this.getClass().toString(), "Error initing Memory Board." );
+	}
+
+	public void fileBoard() {}
+
+	public void exitFuncBoard() {
+		if( funcBoard != null ){
+			funcBoard.close();
+			funcBoard= null;
+		}
+		pstage.setScene( currentBoard.refreshRoot() );
+	}
+
 	public String createNewBoard() {
 		String newf= _SysConfig.getNewRandPath();
 		new DeskTopNote( new File( newf ), this );
@@ -165,7 +216,7 @@ public class DeskTopApp extends Application {
 			System.exit( 201 );
 		}
 		pstage.setScene( currentBoard.refreshRoot() );
-		currentBoard.setWholeShift();
+		currentBoard.setWindowSizeChange();
 		if( currentBoard.maxWindowOnStart() ){
 			pstage.setMaximized( true );
 		}else{
@@ -192,7 +243,7 @@ public class DeskTopApp extends Application {
 				pstage.setHeight( currentBoard.getDim().getY() );
 			}
 			pstage.setScene( currentBoard.refreshRoot() );
-			currentBoard.setWholeShift();
+			currentBoard.setWindowSizeChange();
 			//
 			while( boardNameStack.size() > boardStack.size() ){
 				boardNameStack.remove( boardNameStack.size() - 1 );
@@ -267,6 +318,11 @@ public class DeskTopApp extends Application {
 		currentBoard.storeXMLfil();
 		zipBackUp( currentBoard.getBoardFile() );
 		logConcoleOutput();
+		//
+		if( funcBoard != null ){
+			funcBoard.close();
+			zipBackUp( funcBoard.getBoardFile() );
+		}
 	}
 
 	private void logConcoleOutput() {

@@ -41,6 +41,7 @@ import org.joda.time.format.DateTimeFormatter;
 
 public class Helper {
 	static final String		alphaNum= "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	static final String		alpha	= "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	static final Desktop	dk		= Desktop.getDesktop();
 
 	//
@@ -169,7 +170,8 @@ public class Helper {
 	}
 
 	/* --------------------------------------------------------------------------
-	 * --- return a random alphanumerical string of length 40.*/
+	 * --- return a random alphanumerical string of length itor. 
+	 */
 	public static String randAN( int itor ) {
 		if( itor <= 0 )
 			return "";
@@ -180,8 +182,32 @@ public class Helper {
 		return ret.toString();
 	}
 
+	/* --------------------------------------------------------------------------
+	 * --- 
+	 */
+	public static String randA( int itor ) {
+		if( itor <= 0 )
+			return "";
+		StringBuilder ret= new StringBuilder( "" );
+		for( int i= 0; i < itor; i++ ){
+			ret.append( alpha.charAt( (int) ( Math.random() * 52 ) ) );
+		}
+		return ret.toString();
+	}
+
 	public static char randAlphNum() {
 		return alphaNum.charAt( (int) ( Math.random() * 62 ) );
+	}
+
+	public static boolean AllEmptySpace( String string ) {
+		if( string == null )
+			return true;
+		for( int i= 0; i < string.length(); i++ ){
+			if( string.charAt( i ) != ' ' && string.charAt( i ) != '\n' &&
+					string.charAt( i ) != '\t' )
+				return false;
+		}
+		return true;
 	}
 
 	//
@@ -462,6 +488,28 @@ public class Helper {
 	 *-////////////////////////////////////////////////////////////////////////////////////////////
 	 * =============================================================================================
 	 */
+	/* ----------------------------------------------------------------------------------------------
+	 * read all lines into a al of string.
+	 * ---------------------------------------------------------------------------------------------- */
+	public static ArrayList <String> readFile( String path ) {
+		String str;
+		ArrayList <String> lines= new ArrayList <>();
+		try{
+			BufferedReader in= new BufferedReader(
+					new InputStreamReader(
+							new FileInputStream( path ), "UTF8" ) );
+			while( ( str= in.readLine() ) != null ){
+				lines.add( str );
+			}
+			in.close();
+			in.close();
+		}catch ( IOException e ){
+			e.printStackTrace();
+			return lines;
+		}
+		return lines;
+	}
+
 	public static void append2File( String path, String inp ) {
 		File spath= new File( path );
 		if( !spath.exists() )

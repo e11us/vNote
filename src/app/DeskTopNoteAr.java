@@ -1,6 +1,5 @@
 package app;
 
-import java.awt.Event;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -16,7 +15,6 @@ import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
@@ -26,27 +24,20 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
-import javafx.application.Application;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
+import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
-import javafx.scene.Camera;
 import javafx.scene.Group;
 import javafx.scene.ImageCursor;
 import javafx.scene.Node;
-import javafx.scene.PerspectiveCamera;
 import javafx.scene.Scene;
 import javafx.scene.SceneAntialiasing;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -54,68 +45,50 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.input.MouseDragEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
 import javafx.util.Duration;
 import machine.Helper;
 import machine._SysConfig;
 import machine.p;
 import pin.Pin;
 import pin.PinCopyable;
-import pin.PinInterface;
+import pin.memory.NewLineSpacer;
 import pin.memory._PinMemFactory;
-import pin.note.PinNoteInterface;
-import pin.note.StickyNote;
 import pin.note._PinNoteFactory;
 
 
 
-/* -------------------------------------------------------------------------------------------
- * 
- * -------------------------------------------------------------------------------------------
+/*
+ * almost a copy of the desktopNote, with some added and some deleted.
  */
-public class DeskTopNote {
+public class DeskTopNoteAr {
 	//
 	// focusholder at z=3, bgImg at z=4. liveBG at z= 2.
-	private DeskTopApp				app					= null;
-	private File					file				= null;
-	private Document				doc					= null;
-	private Element					elm					= null;
-	private Scene					scn					= null;
-	private Group					rootSys				= null;
-	private Group					root				= null;
-	private Group					bgNode				= null;
-	private Region					focusHolder			= null;
-	private BorderPane				topMenuP			= null;
-	private ContextMenu				rightMenu			= null;
+	protected DeskTopApp	app					= null;
+	private File			file				= null;
+	protected Document		doc					= null;
+	protected Element		elm					= null;
+	protected Scene			scn					= null;
+	private Group			rootSys				= null;
+	protected Group			root				= null;
+	private Group			bgNode				= null;
+	private Region			focusHolder			= null;
+	private BorderPane		topMenuP			= null;
+	private ContextMenu		optionMenu			= null;
 	//
-	private Point2D					camShift			= new Point2D( 0.0, 0.0 );
-	private int						mouseLastX			= 0;
-	private int						mouseLastY			= 0;
-	private MouseEvent				mouseLastEvn		= null;
-	private Point2D					mouseDragInit		= null;
-	private Rectangle				dragRec				= null;
-	private ArrayList <PinCopyable>	copylist			= new ArrayList <PinCopyable>();
-	private Timeline				idleLockTImer		= null;
+	private Point2D			camShift			= new Point2D( 0.0, 0.0 );
+	private MouseEvent		lastMouseMoveEvent	= null;
 	//
-	private _PinNoteFactory			PNF					= null;
-	// 
-	private int						ShiftKeyboardSpeedX	= 1;
-	private int						ShiftKeyboardSpeedY	= 1;
-	private int						ShiftKeyboardSpeedWX= 1;
-	private int						ShiftKeyboardSpeedWY= 1;
+	private PinArrFactory	PAF					= null;
+	private String			FACtype				= null;
+	private int				ShiftKeyboardSpeedY	= 0;
+	private int				lastYind			= 0;
 
 	/*-----------------------------------------------------------------------------------------
 	 * getters and setter and other public func.
@@ -151,6 +124,10 @@ public class DeskTopNote {
 		store();
 	}
 
+	public void reArrangeBoard() {
+		refreshRoot();
+	}
+
 	public void remove( Pin inp ) {
 		root.getChildren().remove( inp );
 		store();
@@ -158,30 +135,6 @@ public class DeskTopNote {
 
 	public void removeFocusOfMe() {
 		focusHolder.requestFocus();
-		closeBoardRightMenu();
-	}
-
-	public String createNewBoard() {
-		String ret= app.createNewBoard();
-		p.p( this.getClass().toString(), "New Board: " + ret + " is created." );
-		return ret;
-	}
-
-	public void openBoard( String inp ) {
-		store();
-		p.p( this.getClass().toString(), "Switch to Board: " + inp );
-		app.switch2Board( inp );
-	}
-	
-	public void closeIdleLocker() {
-		if( idleLockTImer != null )
-			idleLockTImer.stop();
-	}
-
-	public File createBoardFolder() {
-		File fold= new File( Helper.getFileName( file.toString() ) );
-		fold.mkdirs();
-		return fold;
 	}
 
 	public String getUniqNameInBoardFolder( String ext ) {
@@ -194,51 +147,18 @@ public class DeskTopNote {
 		return uniq;
 	}
 
-	public File chooseDir() {
-		return app.chooseDir();
-	}
-
-	public File chooseFile() {
-		return app.chooseFile();
-	}
-
-	public boolean maxWindowOnStart() {
-		return Boolean.parseBoolean( elm.getAttribute( "WindowMaxOnStart" ) );
-	}
-
-	public String getName() {
-		return elm.getAttribute( "Name" );
-	}
-
-	public void copyNote( PinCopyable pin ) {
-		ArrayList <PinCopyable> cp= new ArrayList <PinCopyable>();
-		cp.add( pin );
-		copyNode( cp );
-		app.ClipBoardCut= false;
-	}
-
-	public void cutNote( PinCopyable pin ) {
-		ArrayList <PinCopyable> cp= new ArrayList <PinCopyable>();
-		cp.add( pin );
-		copyNode( cp );
-		app.ClipBoardCut= true;
-	}
-
-	public boolean isWallpaperMode() {
-		return app.wallpaperMode;
-	}
-
 	public void popMsg( String inp ) {
 		popUp pu= new popUp( "Attention." );
 		VBox comp= new VBox();
-		Label lb= new Label( inp );
+		TextArea lb= new TextArea( inp );
+		lb.setEditable( false );
 		lb.setWrapText( true );
-		lb.setMaxWidth( 300 );
-		lb.setMaxHeight( 100 );
-		lb.setMinWidth( 300 );
-		lb.setMinHeight( 100 );
+		lb.setMaxWidth( 500 );
+		lb.setMaxHeight( 300 );
+		lb.setMinWidth( 500 );
+		lb.setMinHeight( 300 );
 		comp.getChildren().add( lb );
-		Scene stageScene= new Scene( comp, 300, 100 );
+		Scene stageScene= new Scene( comp, 500, 300 );
 		pu.set( stageScene, true );
 	}
 
@@ -247,94 +167,49 @@ public class DeskTopNote {
 	 * create a board data with a given root elm. 
 	 * then sort root child node to spec pin factory.
 	 */
-	protected DeskTopNote( File inp, DeskTopApp app ) {
+	protected DeskTopNoteAr( File inp, DeskTopApp app, String type ) {
 		p.p( this.getClass().toString(), "Constructor running for: " +
 				inp.getAbsolutePath() + " " );
 		// load file. setup elm.
+		this.FACtype= type;
 		this.file= inp;
 		this.app= app;
-		load();
-		// load all Pin Factory.
-		refreshBoard();
-		// set up scene.
-		sceneSetup();
-		removeFocusOfMe();
 		//
-		resetIdleTimer( false );
+		if( !load() )
+			return;
+		// load all Pin Factory.
+		PAF= PinArrFactory.getFactory( doc, elm, this, FACtype );
+		// set up scene.
+		setScrollSpeed();
+		sceneSetup();
+		//
+		this.removeFocusOfMe();
 		p.p( this.getClass().toString(), "Constructor finished." );
+	}
+
+	protected void close() {
+		store();
 	}
 
 	/*-----------------------------------------------------------------------------------------
 	 * reload all the Pin for the board( the node for javaFX) in the root group.
+	 * ( for this arranged board, also give the loaction for the node/pin.
 	 */
 	protected Scene refreshRoot() {
-		//
-		setTitle();
-		//
-		// empty root all first.
+		if( root == null || PAF == null || PAF.getAllChildren() == null )
+			return null;
 		root.getChildren().removeAll( root.getChildren() );
-		// for pinNote.
-		root.getChildren().addAll( PNF.getAllNodes() );
-		// for ***
-		// root.getChildren().addAll( ***.getAllNodes() );
-		// for ***
-		// root.getChildren().addAll( ***.getAllNodes() );
-		// for ***
-		// root.getChildren().addAll( ***.getAllNodes() );
-		// return at last.
+		root.getChildren().addAll( PAF.getAllChildren() );
+		reArrange();
 		return scn;
+	}
+
+	protected void reloadFactory() {
+		PAF.reInitCont();
 	}
 
 	protected File getBoardFile() {
 		return file;
-	}
-
-	protected void setWindowSizeChange() {
-		setWholeShift();
-	}
-
-	private void setWholeShift() {
-		// for x.
-		int xs= app.getStageWidth() / ( ShiftKeyboardSpeedX );
-		if( app.getStageWidth() % ( ShiftKeyboardSpeedX ) > Integer.parseInt( elm.getAttribute( "GridSizeX" ) ) )
-			xs++ ;
-		ShiftKeyboardSpeedWX= xs * ( ShiftKeyboardSpeedX );
-		// for y.
-		int ys= app.getStageHeight() / ( ShiftKeyboardSpeedY );
-		if( app.getStageHeight() % ( ShiftKeyboardSpeedY ) > Integer.parseInt( elm.getAttribute( "GridSizeY" ) ) )
-			ys++ ;
-		ShiftKeyboardSpeedWY= ys * ( ShiftKeyboardSpeedY );
-	}
-
-	protected void setBoardType( String inp ) {
-		elm.setAttribute( "BoardUtilType", inp );
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * reload all the facotry content and other setting config from the XML file. 
-	 */
-	private void refreshBoard() {
-		// for pinNote. setup factory.
-		NodeList nl= elm.getElementsByTagName( _PinNoteFactory.pinTypeName );
-		if( nl.getLength() == 0 ){
-			elm.appendChild( _PinNoteFactory.createElm( doc ) );
-			nl= elm.getElementsByTagName( _PinNoteFactory.pinTypeName );
-			store();
-		}
-		PNF= new _PinNoteFactory( doc, nl.item( 0 ), this );
-		// for ****. setup factory.
-		// ...
-		// ...
-		// for ****. setup factory.
-		// ...
-		// ...
-		// for the grid size.
-		ShiftKeyboardSpeedX= Integer.parseInt( elm.getAttribute( "GridSizeX" ) ) +
-				Integer.parseInt( elm.getAttribute( "GridSpaceX" ) );
-		ShiftKeyboardSpeedY= Integer.parseInt( elm.getAttribute( "GridSizeY" ) ) +
-				Integer.parseInt( elm.getAttribute( "GridSpaceY" ) );
-		// for the grid whole shift.
-		setWholeShift();
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -433,11 +308,11 @@ public class DeskTopNote {
 		if( elm.getAttribute( "GridSizeY" ).equals( "" ) )
 			elm.setAttribute( "GridSizeY", "100" );
 		if( elm.getAttribute( "GridSizeYmin" ).equals( "" ) )
-			elm.setAttribute( "GridSizeYmin", "10" );
+			elm.setAttribute( "GridSizeYmin", "50" );
 		if( elm.getAttribute( "GridSizeYmax" ).equals( "" ) )
-			elm.setAttribute( "GridSizeYmax", "300" );
+			elm.setAttribute( "GridSizeYmax", "600" );
 		if( elm.getAttribute( "GridSizeYstep" ).equals( "" ) )
-			elm.setAttribute( "GridSizeYstep", "3" );
+			elm.setAttribute( "GridSizeYstep", "5" );
 		if( elm.getAttribute( "GridSpaceX" ).equals( "" ) )
 			elm.setAttribute( "GridSpaceX", "15" );
 		if( elm.getAttribute( "GridSpaceY" ).equals( "" ) )
@@ -462,20 +337,19 @@ public class DeskTopNote {
 			elm.setAttribute( "Name", Helper.randAN( 10 ) );
 		if( elm.getAttribute( "DateCreate" ).equals( "" ) )
 			elm.setAttribute( "DateCreate", Helper.getCurrentDate() );
-		if( elm.getAttribute( "ScrollPolicy" ).equals( "" ) )
-			elm.setAttribute( "ScrollPolicy", "full" );
 		if( elm.getAttribute( "ScrollGridSize" ).equals( "" ) )
 			elm.setAttribute( "ScrollGridSize", "1" );
-		if( elm.getAttribute( "CursorName" ).equals( "" ) )
-			elm.setAttribute( "CursorName", "C2.png" );
+		/*
+		if( elm.getAttribute( "ScrollPolicy" ).equals( "" ) )
+			elm.setAttribute( "ScrollPolicy", "full" );
 		if( elm.getAttribute( "TimeIdel2Lock" ).equals( "" ) )
 			elm.setAttribute( "TimeIdel2Lock", "0" );
-		// lockup mode enableing. ( wallpaper mode. )
+		// lockup mode enabling. ( wallpaper mode. )
 		if( elm.getAttribute( "LockUpMode" ).equals( "" ) )
 			elm.setAttribute( "LockUpMode", "false" );
-		// null= regular board, then there is: password, file, picture ...
-		if( elm.getAttribute( "BoardUtilType" ).equals( "" ) )
-			elm.setAttribute( "BoardUtilType", "null" );
+			*/
+		if( elm.getAttribute( "CursorName" ).equals( "" ) )
+			elm.setAttribute( "CursorName", "C2.png" );
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -505,93 +379,52 @@ public class DeskTopNote {
 		}
 		//
 		scn.setOnMouseMoved( e -> {
-			mouseLastEvn= e;
-			resetIdleTimer( false );
-			mouseLastX= (int) ( e.getSceneX() + camShift.getX() );
-			mouseLastY= (int) ( e.getSceneY() + camShift.getY() );
+			lastMouseMoveEvent= e;
+		} );
+		scn.setOnMouseEntered( e -> {
+			lastMouseMoveEvent= e;
 		} );
 		// focus holder. switch mouse the key.
 		focusHolder.setOnMouseClicked( e -> {
-			if( app.wallpaperMode )
-				return;
-			resetIdleTimer( false );
 			switch( e.getButton() ){
 				case PRIMARY :
-					LeftClick( e );
+					focusHolder.requestFocus();
 					break;
 				case SECONDARY :
-					RightClick( e );
+					createMenu( lastMouseMoveEvent.getSceneX(),
+							lastMouseMoveEvent.getScreenY(),
+							lastMouseMoveEvent.getSceneX(),
+							lastMouseMoveEvent.getSceneY(),
+							camShift.getX(), camShift.getY(),
+							PAF.getMenus() );
 					break;
 				default :
 					break;
 			}
 		} );
 		focusHolder.setOnScroll( e -> {
-			if( app.wallpaperMode )
-				return;
-			resetIdleTimer( false );
-			if( elm.getAttribute( "ViewPortChange" ).equals( "false" ) )
-				return;
 			if( e.getDeltaY() > 0.0 ){
-				root.setTranslateY( ShiftKeyboardSpeedY *
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) )
-						+ root.getTranslateY() );
-				camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedY *
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) ) ) );
+				if( camShift.getY() > 0 )
+					camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedY *
+							Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) ) ) );
 			}else{
-				root.setTranslateY( -ShiftKeyboardSpeedY *
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) )
-						+ root.getTranslateY() );
-				camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedY *
-						Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) ) ) );
+				if( camShift.getY() < lastYind )
+					camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedY *
+							Integer.parseInt( elm.getAttribute( "ScrollGridSize" ) ) ) );
 			}
-			setTitle();
+			root.setTranslateY( (int)camShift.getY() * -1 );
 		} );
 		focusHolder.setOnMouseDragged( e -> {
-			if( app.wallpaperMode )
-				return;
-			resetIdleTimer( false );
 			switch( e.getButton() ){
 				case PRIMARY :
-					mouseleftDrag( (int)e.getSceneX(), (int)e.getSceneY() );
 					break;
 				default :
 					break;
 			}
 		} );
-		focusHolder.setOnMouseReleased( e -> {
-			if( app.wallpaperMode )
-				return;
-			mouseleftDragEnd();
-			// upon realase drag rec, if there is rec, check and make list of node inside rec.
-			if( dragRec != null ){
-				Rectangle tmpRec= new Rectangle();
-				tmpRec.setX( dragRec.getX() + camShift.getX() );
-				tmpRec.setY( dragRec.getY() + camShift.getY() );
-				tmpRec.setWidth( dragRec.getWidth() );
-				tmpRec.setHeight( dragRec.getHeight() );
-				//
-				copylist= new ArrayList <PinCopyable>();
-				app.ClipBoardOS.remove( app.ClipBoardOS );
-				for( Node tmp : root.getChildren() ){
-					if( tmp instanceof PinCopyable &&
-							tmp.getBoundsInParent().intersects( tmpRec.getBoundsInParent() ) ){
-						copylist.add( (PinCopyable)tmp );
-						( (PinCopyable)tmp ).selectHL();
-					}
-				}
-			}
-		} );
 		focusHolder.setOnMousePressed( e -> {
-			if( app.wallpaperMode )
-				return;
-			resetIdleTimer( false );
 			switch( e.getButton() ){
 				case PRIMARY :
-					//
-					if( mouseDragInit == null && dragRec != null ){
-						mouseleftDragRecEnd();
-					}
 					break;
 				default :
 					break;
@@ -603,82 +436,29 @@ public class DeskTopNote {
 				switch( (int)event.getCharacter().charAt( 0 ) ){
 					case 27 :
 						// esc
-						if( app.wallpaperMode ){
-							popUpUnlock();
-						}else{
-							if( dragRec != null ){
-								mouseleftDragRecEnd();
-							}else{
-								store();
-								app.popBoardStack();
-							}
-						}
+						store();
+						app.exitFuncBoard();
 						return;
 					case 8 :
 						// backspace.
-						mouseleftDragRecEnd();
-						if( copylist != null && copylist.size() > 0 ){
-							for( PinCopyable tmp : copylist ){
-								tmp.deleteAfterCut();
-							}
-						}
 						return;
 				}
-				if( app.wallpaperMode ){
-					return;
-				}
-				resetIdleTimer( false );
 				switch( event.getCharacter() ){
-					case "w" :
-						if( elm.getAttribute( "ViewPortChange" ).equals( "false" ) )
-							return;
-						if( !elm.getAttribute( "ScrollPolicy" ).equals( "full" ) ){
-							root.setTranslateY( ShiftKeyboardSpeedY + root.getTranslateY() );
-							camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedY ) );
-						}else{
-							root.setTranslateY( ShiftKeyboardSpeedWY + root.getTranslateY() );
-							camShift= camShift.add( new Point2D( 0.0, (double) -ShiftKeyboardSpeedWY ) );
-						}
-						setTitle();
+					//
+					//***
+					// t is for test. to remove after done.
+					case "t" :
+						( (_PinMemFactory)PAF ).incTime();
 						break;
-					case "s" :
-						if( elm.getAttribute( "ViewPortChange" ).equals( "false" ) )
-							return;
-						if( !elm.getAttribute( "ScrollPolicy" ).equals( "full" ) ){
-							root.setTranslateY( -ShiftKeyboardSpeedY + root.getTranslateY() );
-							camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedY ) );
-						}else{
-							root.setTranslateY( -ShiftKeyboardSpeedWY + root.getTranslateY() );
-							camShift= camShift.add( new Point2D( 0.0, (double)ShiftKeyboardSpeedWY ) );
-						}
-						setTitle();
-						break;
-					case "a" :
-						if( elm.getAttribute( "ViewPortChange" ).equals( "false" ) )
-							return;
-						if( !elm.getAttribute( "ScrollPolicy" ).equals( "full" ) ){
-							root.setTranslateX( ShiftKeyboardSpeedX + root.getTranslateX() );
-							camShift= camShift.add( new Point2D( (double) -ShiftKeyboardSpeedX, 0.0 ) );
-						}else{
-							root.setTranslateX( ShiftKeyboardSpeedWX + root.getTranslateX() );
-							camShift= camShift.add( new Point2D( (double) -ShiftKeyboardSpeedWX, 0.0 ) );
-						}
-						setTitle();
-						break;
-					case "d" :
-						if( elm.getAttribute( "ViewPortChange" ).equals( "false" ) )
-							return;
-						if( !elm.getAttribute( "ScrollPolicy" ).equals( "full" ) ){
-							root.setTranslateX( -ShiftKeyboardSpeedX + root.getTranslateX() );
-							camShift= camShift.add( new Point2D( (double)ShiftKeyboardSpeedX, 0.0 ) );
-						}else{
-							root.setTranslateX( -ShiftKeyboardSpeedWX + root.getTranslateX() );
-							camShift= camShift.add( new Point2D( (double)ShiftKeyboardSpeedWX, 0.0 ) );
-						}
-						setTitle();
-						break;
+					//***
+					//
 					case " " :
-						RightClick( mouseLastEvn );
+						createMenu( lastMouseMoveEvent.getSceneX(),
+								lastMouseMoveEvent.getScreenY(),
+								lastMouseMoveEvent.getSceneX(),
+								lastMouseMoveEvent.getSceneY(),
+								camShift.getX(), camShift.getY(),
+								PAF.getMenus() );
 						break;
 					case "e" :
 					case "E" :
@@ -689,74 +469,13 @@ public class DeskTopNote {
 							topMenuP= null;
 						}
 						break;
-					case "x" :
-						root.setTranslateX( 0 );
-						root.setTranslateY( 0 );
-						camShift= new Point2D( 0.0, 0.0 );
-						setTitle();
-						break;
-					case "n" :
-						setBoardNamePopUp();
-						break;
 					case "m" :
 						popUpConsoleLog();
-						break;
-					case "X" :
-						app.ClipBoardCut= true;
-						if( copylist.size() > 0 )
-							copyNode( copylist );
-						mouseleftDragRecEnd();
-						break;
-					case "C" :
-						app.ClipBoardCut= false;
-						if( copylist.size() > 0 )
-							copyNode( copylist );
-						// remove.
-						mouseleftDragRecEnd();
-						break;
-					case "V" :
-						if( app.ClipBoard.size() != 0 ){
-							Pin tcp;
-							for( PinCopyable tmp : app.ClipBoard ){
-								switch( tmp.getFactyName() ){
-									case _PinNoteFactory.pinTypeName :
-										tcp= PNF.createNewNote(
-												tmp, mouseLastX, mouseLastY );
-										if( tcp != null ){
-											root.getChildren().add( tcp );
-											if( app.ClipBoardCut ){
-												// if good copy, delete cut case.
-												tmp.deleteAfterCut();
-											}
-										}
-										break;
-									// case : ( for other factory ).
-								}
-							}
-							// clear up after each paste.
-							app.ClipBoardCut= false;
-							app.ClipBoard.removeAll( app.ClipBoard );
-						}
-						break;
-					case "q" :
-						if( copylist.size() > 0 ){
-							for( PinCopyable tmp : copylist ){
-								( (Node)tmp ).fireEvent( event );
-							}
-						}
-						mouseleftDragRecEnd();
 						break;
 					case "r" :
 						popMsg( "Total Notes: " + root.getChildren().size() + " \n" +
 								"Board Name: " + elm.getAttribute( "Name" ) + " \n" +
 								"Creation Date: " + elm.getAttribute( "DateCreate" ) );
-						break;
-					case "l" :
-						resetIdleTimer( true );
-						break;
-					case "1" :
-						app.memroyBoard();
-						closeIdleLocker();
 						break;
 				}
 			}
@@ -777,71 +496,14 @@ public class DeskTopNote {
 	}
 
 	/*-----------------------------------------------------------------------------------------
-	 * 
+	 * create right menu.
 	 */
-	private void copyNode( ArrayList <PinCopyable> nodes ) {
-		app.ClipBoard.removeAll( app.ClipBoard );
-		app.ClipBoard.addAll( nodes );
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * set title for the x, and y.
-	 */
-	private void setTitle() {
-		app.setTitle( elm.getAttribute( "Name" ) + " [" +
-				(int) ( camShift.getX() / ShiftKeyboardSpeedX ) + " , " +
-				(int) ( camShift.getY() / ShiftKeyboardSpeedY ) + "]" );
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * mouse left click on empty space.
-	 */
-	private void LeftClick( MouseEvent e ) {
-		removeFocusOfMe();
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * mouse right click on empty space.
-	 */
-	private void RightClick( MouseEvent e ) {
-		removeFocusOfMe();
-		mouseleftDragEnd();
-		mouseleftDragRecEnd();
-		createBoardRightMenu( e.getScreenX(), e.getScreenY(), e.getSceneX(), e.getSceneY(),
-				camShift.getX(), camShift.getY() );
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * create a right click menu.
-	 */
-	private void createBoardRightMenu( double xs, double ys, double x, double y, double xx, double yy ) {
-		rightMenu= new ContextMenu();
-		for( String tmp : _PinNoteFactory.NoteTypes ){
-			MenuItem tmi= new MenuItem( "New " + tmp );
-			tmi.setOnAction( e -> {
-				Pin ret= PNF.createNewNote(
-						tmi.getText().substring( 4, tmi.getText().length() ),
-						(int) ( xx + x ), (int) ( yy + y ) );
-				if( ret != null ){
-					root.getChildren().add( ret );
-					store();
-				}
-				removeFocusOfMe();
-			} );
-			rightMenu.getItems().add( tmi );
-		}
+	private void createMenu( double xs, double ys, double x, double y, double xx, double yy,
+			ArrayList <MenuItem> menus ) {
+		optionMenu= new ContextMenu();
+		optionMenu.getItems().addAll( menus );
 		//
-		rightMenu.show( root, xs, ys );
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * close right click menu.
-	 */
-	private void closeBoardRightMenu() {
-		if( rightMenu != null ){
-			rightMenu.hide();
-			rightMenu= null;
-		}
+		optionMenu.show( root, xs, ys );
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -865,8 +527,8 @@ public class DeskTopNote {
 				mi.setToggleGroup( gwG );
 				mi.setOnAction( e -> {
 					elm.setAttribute( "GridSizeX", Integer.parseInt( mi.getText() ) + "" );
-					refreshBoard();
-					refreshRoot();
+					reloadFactory();
+					reArrangeBoard();
 				} );
 				if( i == Integer.parseInt( elm.getAttribute( "GridSizeX" ) ) )
 					mi.setSelected( true );
@@ -884,8 +546,9 @@ public class DeskTopNote {
 				mi.setToggleGroup( ghG );
 				mi.setOnAction( e -> {
 					elm.setAttribute( "GridSizeY", Integer.parseInt( mi.getText() ) + "" );
-					refreshBoard();
-					refreshRoot();
+					setScrollSpeed();
+					reloadFactory();
+					reArrangeBoard();
 				} );
 				if( i == Integer.parseInt( elm.getAttribute( "GridSizeY" ) ) )
 					mi.setSelected( true );
@@ -900,8 +563,8 @@ public class DeskTopNote {
 				mi.setToggleGroup( gwsG );
 				mi.setOnAction( e -> {
 					elm.setAttribute( "GridSpaceX", Integer.parseInt( mi.getText() ) + "" );
-					refreshBoard();
-					refreshRoot();
+					reloadFactory();
+					reArrangeBoard();
 				} );
 				if( i == Integer.parseInt( elm.getAttribute( "GridSpaceX" ) ) )
 					mi.setSelected( true );
@@ -916,8 +579,9 @@ public class DeskTopNote {
 				mi.setToggleGroup( ghsG );
 				mi.setOnAction( e -> {
 					elm.setAttribute( "GridSpaceY", Integer.parseInt( mi.getText() ) + "" );
-					refreshBoard();
-					refreshRoot();
+					setScrollSpeed();
+					reloadFactory();
+					reArrangeBoard();
 				} );
 				if( i == Integer.parseInt( elm.getAttribute( "GridSpaceY" ) ) )
 					mi.setSelected( true );
@@ -927,73 +591,6 @@ public class DeskTopNote {
 			//
 			Menu ppt= new Menu( "Property" );
 			topMenu.getMenus().add( ppt );
-			ToggleGroup pptSP= new ToggleGroup();
-			RadioMenuItem partSP= new RadioMenuItem( "grid scroll" );
-			partSP.setToggleGroup( pptSP );
-			RadioMenuItem wholSP= new RadioMenuItem( "window scroll" );
-			wholSP.setToggleGroup( pptSP );
-			ppt.getItems().add( partSP );
-			ppt.getItems().add( wholSP );
-			if( elm.getAttribute( "ScrollPolicy" ).equals( "full" ) )
-				wholSP.setSelected( true );
-			else partSP.setSelected( true );
-			wholSP.setOnAction( e -> {
-				elm.setAttribute( "ScrollPolicy", "full" );
-			} );
-			partSP.setOnAction( e -> {
-				elm.setAttribute( "ScrollPolicy", "part" );
-			} );
-			ppt.getItems().add( new SeparatorMenuItem() );
-			//
-			MenuItem name= new MenuItem( "change name" );
-			name.setOnAction( e -> {
-				setBoardNamePopUp();
-			} );
-			//
-			MenuItem vpchange= new MenuItem();
-			if( elm.getAttribute( "ViewPortChange" ).equals( "true" ) ){
-				vpchange.setText( "disable viewport change." );
-				vpchange.setOnAction( e -> {
-					elm.setAttribute( "ViewPortChange", "false" );
-					rootSys.getChildren().remove( topMenuP );
-					topMenuP= null;
-				} );
-			}else{
-				vpchange.setText( "enable viewport change." );
-				vpchange.setOnAction( e -> {
-					elm.setAttribute( "ViewPortChange", "true" );
-					rootSys.getChildren().remove( topMenuP );
-					topMenuP= null;
-				} );
-			}
-			//
-			MenuItem scrolGD= new MenuItem( "scroll grid size" );
-			scrolGD.setOnAction( e -> {
-				setScrollGridSizePopUp();
-			} );
-			//
-			MenuItem lmchange= new MenuItem();
-			if( elm.getAttribute( "LockUpMode" ).equals( "true" ) ){
-				lmchange.setText( "disable lockup mode." );
-				lmchange.setOnAction( e -> {
-					elm.setAttribute( "LockUpMode", "false" );
-					rootSys.getChildren().remove( topMenuP );
-					topMenuP= null;
-				} );
-			}else{
-				lmchange.setText( "enable lockup mode." );
-				lmchange.setOnAction( e -> {
-					elm.setAttribute( "LockUpMode", "true" );
-					rootSys.getChildren().remove( topMenuP );
-					topMenuP= null;
-				} );
-			}
-			//
-			ppt.getItems().add( name );
-			ppt.getItems().add( vpchange );
-			ppt.getItems().add( scrolGD );
-			ppt.getItems().add( lmchange );
-			ppt.getItems().add( new SeparatorMenuItem() );
 			//
 			MenuItem chooseBG= new MenuItem( "choose background picture" );
 			chooseBG.setOnAction( e -> {
@@ -1031,53 +628,9 @@ public class DeskTopNote {
 		}
 	}
 
-	/*-----------------------------------------------------------------------------------------
-	 * left mouse drag a rec and relase.
-	 */
-	public void mouseleftDrag( int x, int y ) {
-		if( mouseDragInit == null ){
-			mouseDragInit= new Point2D( x, y );
-			if( dragRec != null ){
-				mouseleftDragRecEnd();
-			}
-			dragRec= new Rectangle();
-			dragRec.setX( x );
-			dragRec.setY( y );
-			dragRec.setFill( new Color( 1.0, 1.0, 1.0, 0.1 ) );
-			rootSys.getChildren().add( dragRec );
-		}else{
-			if( x >= mouseDragInit.getX() )
-				dragRec.setWidth( x - mouseDragInit.getX() );
-			else{
-				dragRec.setWidth( mouseDragInit.getX() - x );
-				dragRec.setX( x );
-			}
-			if( y >= mouseDragInit.getY() )
-				dragRec.setHeight( y - mouseDragInit.getY() );
-			else{
-				dragRec.setHeight( mouseDragInit.getY() - y );
-				dragRec.setY( y );
-			}
-		}
-	}
-
-	/*-----------------------------------------------------------------------------------------
-	 * end mouse drag.
-	 */
-	private void mouseleftDragEnd() {
-		mouseDragInit= null;
-	}
-
-	private void mouseleftDragRecEnd() {
-		// remove rec.
-		rootSys.getChildren().remove( dragRec );
-		// de HL copylist content if there is any.
-		if( copylist != null && copylist.size() > 0 ){
-			for( PinCopyable tmp : copylist ){
-				tmp.selectDeHL();
-			}
-		}
-		dragRec= null;
+	private void setScrollSpeed() {
+		ShiftKeyboardSpeedY= (int) ( ( (double)Integer.parseInt( elm.getAttribute( "GridSpaceY" ) ) ) / 2.0 +
+				Integer.parseInt( elm.getAttribute( "GridSizeY" ) ) );
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -1094,7 +647,6 @@ public class DeskTopNote {
 				if( event.getCode() == KeyCode.ENTER ){
 					pu.close();
 					elm.setAttribute( "Name", nameField.getText() );
-					setTitle();
 				}
 			}
 		} );
@@ -1210,36 +762,40 @@ public class DeskTopNote {
 	/*-----------------------------------------------------------------------------------------
 	 * 
 	 */
-	private void resetIdleTimer( boolean lockupNow ) {
-		try{
-			int idle= 1000 * Integer.parseInt( elm.getAttribute( "TimeIdel2Lock" ) );
-			if( lockupNow )
-				idle= 1;
-			//
-			if( idle > 0 && elm.getAttribute( "LockUpMode" ).equals( "true" ) ){
-				if( idleLockTImer != null )
-					idleLockTImer.stop();
-				idleLockTImer= new Timeline( new KeyFrame(
-						Duration.millis( idle ),
-						ae -> {
-							// going into lockup ( wallpapaer mode )
-							if( app.getPrimStage() != null &&
-									!app.getPrimStage().isIconified() &&
-									elm.getAttribute( "LockUpMode" ).equals( "true" ) ){
-								//
-								mouseleftDragRecEnd();
-								removeFocusOfMe();
-								rootSys.getChildren().remove( topMenuP );
-								topMenuP= null;
-								//
-								app.wallpaperMode= true;
-								app.switchWallPaperMode();
-							}
-						} ) );
-				idleLockTImer.play();
+	private int		curLocX		= 100;
+	private int		curLocY		= 100;
+	private boolean	lastSpacer	= false;
+
+	private void reArrange() {
+		curLocX= curLocY= 100;
+		int[] gridConfig= getGridSizeConfig();
+		for( Node tmp : root.getChildren() ){
+			if( tmp instanceof NewLineSpacer ){
+				if( !lastSpacer )
+					incNewLine( gridConfig );
+				continue;
 			}
-		}catch ( Exception ee ){
-			// silent fail.
+			if( tmp instanceof Pin ){
+				( (Pin)tmp ).setLocationManaged( true );
+				( (Pin)tmp ).setTranslateX( curLocX );
+				( (Pin)tmp ).setTranslateY( curLocY );
+				lastYind= curLocY;
+				incNextLoc( gridConfig );
+			}
 		}
+	}
+
+	private void incNextLoc( int[] gridConfig ) {
+		curLocX+= gridConfig[0] + gridConfig[2];
+		if( curLocX + gridConfig[0] > app.getStageWidth() ){
+			curLocX= 100;
+			curLocY+= gridConfig[1] + gridConfig[3];
+			lastSpacer= true;
+		}else lastSpacer= false;
+	}
+
+	private void incNewLine( int[] gridConfig ) {
+		curLocX= 100;
+		curLocY+= gridConfig[1] + gridConfig[3];
 	}
 }

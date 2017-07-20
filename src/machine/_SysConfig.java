@@ -29,6 +29,8 @@ import org.w3c.dom.*;
 public class _SysConfig {
 	public final static String	sysFolderName		= "Sys";
 	public final static String	backgroundFolderName= "Background";
+	public final static String	cursorFoldername	= "cursor";
+	public final static int		newBoardNameLength	= 16;
 	//
 	private static int			ScreenSizeX			= 0;
 	private static int			ScreenSizeY			= 0;
@@ -38,6 +40,7 @@ public class _SysConfig {
 	private static File			masterConfig		= null;
 	private static File			boardFolder			= null;
 	private static Element		masterConfigElm		= null;
+	private static String[]		SQL_LI				= new String[3];
 	//
 	private static boolean		maxWindowOnStart	= false;
 
@@ -58,6 +61,10 @@ public class _SysConfig {
 
 	public static int getScreenSizeY() {
 		return ScreenSizeY;
+	}
+
+	public static String[] getSQL_LI() {
+		return SQL_LI;
 	}
 
 	/*-----------------------------------------------------------------------------------------
@@ -89,8 +96,12 @@ public class _SysConfig {
 		if( !loadMasterConfigFile() )
 			return 105;
 		//
+		// load config.
 		maxWindowOnStart= Boolean.parseBoolean(
 				masterConfigElm.getAttribute( "ESM_MaxWindowOnStart" ) );
+		SQL_LI[0]= masterConfigElm.getAttribute( "ESM_SQL_address" );
+		SQL_LI[1]= masterConfigElm.getAttribute( "ESM_SQL_user" );
+		SQL_LI[2]= masterConfigElm.getAttribute( "ESM_SQL_password" );
 		//
 		p.p( "machine._SysCOnfig", "ESM init running, time: " +
 				Helper.getCurrentTimeStampMS() + " Total board: " +
@@ -126,10 +137,10 @@ public class _SysConfig {
 
 	public static String getNewRandPath() {
 		File defDesktop= new File( masterConfigElm.getAttribute( "ESM_BoardFolderName" ) + File.separatorChar +
-				Helper.randAN( 16 ) + ".xml" );
+				Helper.randAN( newBoardNameLength ) + ".xml" );
 		while( defDesktop.exists() ){
 			defDesktop= new File( masterConfigElm.getAttribute( "ESM_BoardFolderName" ) + File.separatorChar +
-					Helper.randAN( 16 ) + ".xml" );
+					Helper.randAN( newBoardNameLength ) + ".xml" );
 		}
 		return defDesktop.getPath().replace( '\\', '/' );
 	}
@@ -170,6 +181,22 @@ public class _SysConfig {
 		}
 		return false;
 	}
+	/*
+	private static void completeMasterXML() {
+		if( masterConfigElm.getAttribute( "ESM_BoardFolderName" ).equals( "" ) )
+			masterConfigElm.setAttribute( "ESM_BoardFolderName", "ESMB" );
+		if( masterConfigElm.getAttribute( "ESM_BoardDeskTopName" ).equals( "" ) )
+			masterConfigElm.setAttribute( "ESM_BoardDeskTopName", "_DeskTop.xml" );
+		if( masterConfigElm.getAttribute( "ESM_MaxWindowOnStart" ).equals( "" ) )
+			masterConfigElm.setAttribute( "ESM_MaxWindowOnStart", "true" );
+		if( masterConfigElm.getAttribute( "ESM_SQL_address" ).equals( "" ) )
+			masterConfigElm.setAttribute( "ESM_SQL_address", "www.example.com" );
+		if( masterConfigElm.getAttribute( "ESM_SQL_user" ).equals( "" ) )
+			masterConfigElm.setAttribute( "ESM_SQL_user", "user" );
+		if( masterConfigElm.getAttribute( "ESM_SQL_password" ).equals( "" ) )
+			masterConfigElm.setAttribute( "ESM_SQL_password", "pass" );
+	}
+	*/
 
 	/*-----------------------------------------------------------------------------------------
 	 * 
@@ -186,6 +213,9 @@ public class _SysConfig {
 			xtw.writeAttribute( "ESM_BoardFolderName", "ESMB" );
 			xtw.writeAttribute( "ESM_BoardDeskTopName", "_DeskTop.xml" );
 			xtw.writeAttribute( "ESM_MaxWindowOnStart", "true" );
+			xtw.writeAttribute( "ESM_SQL_address", "www.example.com" );
+			xtw.writeAttribute( "ESM_SQL_user", "user" );
+			xtw.writeAttribute( "ESM_SQL_password", "pass" );
 			// end.
 			xtw.writeEndElement();
 			xtw.writeEndDocument();

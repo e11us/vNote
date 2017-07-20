@@ -55,7 +55,8 @@ public class ClipBoard implements _SystemClockLis {
 				tmp.reciveContent( last );
 			}
 		}catch ( UnsupportedFlavorException | IOException e ){
-			e.printStackTrace();
+			// silent fail.
+			//e.printStackTrace();
 		}
 	}
 

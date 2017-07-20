@@ -7,6 +7,8 @@ import org.jsoup.Jsoup;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import app.DeskTopNote;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.EventHandler;
@@ -17,6 +19,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
+import javafx.util.Duration;
 import machine.Helper;
 import machine.p;
 import pin.Pin;
@@ -238,8 +241,11 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 				return;
 			}
 			// if this is click.
+			board.removeFocusOfMe();
 			switch( e.getButton() ){
 				case PRIMARY :
+					if( board.isWallpaperMode() )
+						return;
 					if( e.getClickCount() == 1 ){
 						handler.requestFocus();
 						BasefocusOn= true;
@@ -370,6 +376,8 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 			}
 		} );
 		this.setOnMouseDragged( e -> {
+			if( board.isWallpaperMode() )
+				return;
 			// reset focus of all.
 			board.removeFocusOfMe();
 			//
@@ -406,11 +414,13 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 		// set boarder .
 		if( bd == null )
 			bd= _PinBorderFactory.getBoarder( dat.getAttribute( "BoarderType" ) );
-		// sheift the note.
-		this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
-				gc[2] / 2 );
-		this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
-				gc[3] / 2 );
+		// sheift the note. if the location is not managed.
+		if( !super.locationManaged ){
+			this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
+					gc[2] / 2 );
+			this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
+					gc[3] / 2 );
+		}
 		//
 		lb.setWrapText( true );
 		lb.setMaxWidth( width - bd.getLeftOS() - bd.getRightOS() );
@@ -513,6 +523,7 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 	}
 
 	private void useTextArea() {
+		board.closeIdleLocker();
 		handler.setStyle( "-fx-background-color: #" +
 				dat.getAttribute( "ColorBackGround1" ) );
 		ta.setStyle(
@@ -520,8 +531,10 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 						dat.getAttribute( "ColorBackGround1" ) + ";" +
 						"-fx-border-color: #" +
 						dat.getAttribute( "ColorBackGround1" ) + ";" +
-						"-fx-text-fill: black; " +
-						"-fx-font-size: " + dat.getAttribute( "FontSize" ) + ";" );
+						"-fx-text-fill: #" + dat.getAttribute( "ColorText" ) + ";" +
+						"-fx-font-size: " + dat.getAttribute( "FontSize" ) + ";" +
+						"-fx-control-inner-background: #" +
+						dat.getAttribute( "ColorBackGround1" ) + ";" );
 		bd.set( width, height, Integer.parseInt( dat.getAttribute( "BoarderThick" ) ),
 				dat.getAttribute( "ColorBoarder" ),
 				dat.getAttribute( "ColorTitle" ) );
@@ -561,22 +574,22 @@ public class WebNote extends Pin implements PinNoteInterface, PinCopyable {
 	}
 
 	private void getTitle( String inp ) {
-		Thread tt= new Thread() {
-			public void run() {
-				org.jsoup.nodes.Document doc;
-				try{
-					doc= Jsoup.connect( inp ).get();
-					String tit= doc.title();
-					dat.setAttribute( "Note", tit );
-					lb.setText( tit );
-					ta.setText( tit );
-					//
-					board.storeXMLfil();
-				}catch ( IOException e ){
-					e.printStackTrace();
-				}
-			}
-		};
-		tt.start();
+		Timeline timeline= new Timeline( new KeyFrame(
+				Duration.millis( 1 ),
+				ae -> {
+					org.jsoup.nodes.Document doc;
+					try{
+						doc= Jsoup.connect( inp ).get();
+						String tit= doc.title();
+						dat.setAttribute( "Note", tit );
+						lb.setText( tit );
+						ta.setText( tit );
+						//
+						board.storeXMLfil();
+					}catch ( IOException e ){
+						e.printStackTrace();
+					}
+				} ) );
+		timeline.play();
 	}
 }

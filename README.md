@@ -1,6 +1,8 @@
 # vNote
 vNote, or virtual notes, is a note taking system in the form of sticky note, intended for taking any text based notes, website links, and local computer file and directory links.
 using vNote, you have the power of storing information in sticky notes on a virtual and infinity size note board. Initially, your viewport is at upper right corner (0,0) location, but you can scroll to any location with ease. It is equivalent of having a windows desktop with infinite size. and you can nest note board within each note board.
+
+provides a desktop-like experience on all device that is compatable with JVM.
  
 vNote is still in development, more feature coming soon...
  

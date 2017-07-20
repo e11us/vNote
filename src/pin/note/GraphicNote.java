@@ -4,9 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
-import org.apache.log4j.chainsaw.Main;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -42,7 +40,6 @@ public class GraphicNote extends Pin implements PinNoteInterface {
 	private Element				dat			= null;
 	private ImageView			imgV		= new ImageView();;
 	private Image				img			= null;
-	private Group				bdn			= null;
 	private boolean				dragWasOn	= false;
 	private boolean				resizeSig	= false;
 	private boolean				focused		= false;
@@ -94,7 +91,7 @@ public class GraphicNote extends Pin implements PinNoteInterface {
 		try{
 			Thumbnails.of( img ).size( gc[0], gc[1] )
 					.toFile( fd.getPath().toString() + File.separatorChar + name + " T.jpg" );
-		}catch ( IOException e ){
+		}catch ( Exception e ){
 			board.popMsg( e.getLocalizedMessage() +
 					"\n\nGraphic Note is not created. Please try again." );
 			return false;
@@ -123,6 +120,8 @@ public class GraphicNote extends Pin implements PinNoteInterface {
 	public void init() {
 		this.getChildren().add( imgV );
 		this.setOnMouseClicked( e -> {
+			if( board.isWallpaperMode() )
+				return;
 			// if this is end of drag.
 			if( dragWasOn ){
 				dragWasOn= false;
@@ -130,6 +129,7 @@ public class GraphicNote extends Pin implements PinNoteInterface {
 				return;
 			}
 			// if this is click.
+			board.removeFocusOfMe();
 			switch( e.getButton() ){
 				case PRIMARY :
 					if( e.getClickCount() == 1 ){
@@ -140,6 +140,8 @@ public class GraphicNote extends Pin implements PinNoteInterface {
 					}
 				case SECONDARY :
 					//
+				default :
+					break;
 			}
 		} );
 		imgV.focusedProperty().addListener( new ChangeListener <Boolean>() {
@@ -249,6 +251,8 @@ public class GraphicNote extends Pin implements PinNoteInterface {
 			}
 		} );
 		this.setOnMouseDragged( e -> {
+			if( board.isWallpaperMode() )
+				return;
 			// reset focus of all.
 			board.removeFocusOfMe();
 			//
@@ -378,11 +382,13 @@ public class GraphicNote extends Pin implements PinNoteInterface {
 			this.bd.set( width, height, 2, "ffffff", "ffffff" );
 			this.getChildren().add( bd.getNodes() );
 		}
-		// sheift the note.
-		this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
-				gc[2] / 2 );
-		this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
-				gc[3] / 2 );
+		// sheift the note. if the location is not managed.
+		if( !super.locationManaged ){
+			this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
+					gc[2] / 2 );
+			this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
+					gc[3] / 2 );
+		}
 	}
 
 	private void redoImg( int[] gc ) {

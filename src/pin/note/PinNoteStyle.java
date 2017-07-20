@@ -129,6 +129,8 @@ public class PinNoteStyle extends Pin {
 		vb2.setStyle( "-fx-background-color: #aaaaaa;" );
 		//
 		this.setOnMouseClicked( e -> {
+			if( board.isWallpaperMode() )
+				return;
 			// if this is end of drag.
 			if( dragWasOn ){
 				dragWasOn= false;
@@ -136,6 +138,7 @@ public class PinNoteStyle extends Pin {
 				return;
 			}
 			// if this is click.
+			board.removeFocusOfMe();
 			switch( e.getButton() ){
 				case PRIMARY :
 					if( e.getClickCount() == 1 ){
@@ -193,6 +196,8 @@ public class PinNoteStyle extends Pin {
 			}
 		} );
 		this.setOnMouseDragged( e -> {
+			if( board.isWallpaperMode() )
+				return;
 			// reset focus of all.
 			board.removeFocusOfMe();
 			//
@@ -221,11 +226,13 @@ public class PinNoteStyle extends Pin {
 		this.setMaxHeight( height );
 		this.setMinWidth( width );
 		this.setMaxWidth( width );
-		// sheift the note.
-		this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
-				gc[2] / 2 );
-		this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
-				gc[3] / 2 );
+		// sheift the note. if the location is not managed.
+		if( !super.locationManaged ){
+			this.setTranslateX( ( gx - 1 ) * ( gc[0] + gc[2] ) +
+					gc[2] / 2 );
+			this.setTranslateY( ( gy - 1 ) * ( gc[1] + gc[3] ) +
+					gc[3] / 2 );
+		}
 		//
 		if( bd == null ){
 			PinBorderInterface b= _PinBorderFactory.getBoarder( "default" );

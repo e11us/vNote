@@ -7,6 +7,12 @@ import javafx.scene.layout.Region;
 
 
 public class Pin extends Region implements PinInterface {
+	protected boolean locationManaged= false;
+
+	public void setLocationManaged( boolean inp ) {
+		locationManaged= inp;
+	}
+
 	@Override
 	public void init() {
 		// TODO Auto-generated method stub
